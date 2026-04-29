@@ -235,3 +235,19 @@ It is:
 - embedding these flow calls into the live session turn loop
 - enforcing the delivery contract at message-send time
 - guaranteeing clean `NO_REPLY` behavior after successful voice-note sends
+
+## Workspace adapter
+
+This workspace now includes a small adapter layer:
+
+- `openclaw-cyber-gf-adapter.js`
+
+Its purpose is to help the outer OpenClaw/live-chat runtime do the last-mile routing cleanly:
+
+- map `开始赛博女友` / `退出赛博女友` / `我们分手吧`
+- route normal turns into the existing local flow
+- dispatch `voice_note` delivery through a caller-provided send hook
+- return the exact silent token `NO_REPLY` after successful voice-note sends
+- collapse known leaked fallback text like `No further note from me.` back into a silent reply
+
+This does **not** replace runtime-core integration, but it narrows the last-mile gap and makes the intended delivery contract executable instead of purely documentary.

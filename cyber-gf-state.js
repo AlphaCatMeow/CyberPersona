@@ -1,7 +1,14 @@
 const fs = require('fs');
 const { getConfig } = require('./cyber-gf-config');
-const LEVELS = ['low', 'medium', 'high'];
-const DELTAS = new Set(['slight_up', 'slight_down', 'keep']);
+const STATE_KEYS = ['relationshipWarmth', 'safety', 'trust', 'approachDesire', 'vulnerabilityWillingness', 'voiceEase'];
+const STATE_SENSITIVITY = {
+  relationshipWarmth: 1.0,
+  safety: 0.8,
+  trust: 0.7,
+  approachDesire: 0.9,
+  vulnerabilityWillingness: 0.6,
+  voiceEase: 0.5
+};
 
 function nowIso() {
   return new Date().toISOString();
@@ -33,12 +40,12 @@ function createEmptyState() {
       profileSummary: ''
     },
     dynamicState: {
-      relationshipWarmth: 'medium',
-      safety: 'medium',
-      trust: 'medium',
-      approachDesire: 'medium',
-      vulnerabilityWillingness: 'medium',
-      voiceEase: 'low'
+      relationshipWarmth: 50,
+      safety: 50,
+      trust: 50,
+      approachDesire: 50,
+      vulnerabilityWillingness: 30,
+      voiceEase: 20
     },
     shortTermState: {
       unresolvedEmotion: 'none',
@@ -108,7 +115,8 @@ function repairState(state) {
   };
 
   for (const key of Object.keys(repaired.dynamicState)) {
-    if (!LEVELS.includes(repaired.dynamicState[key])) repaired.dynamicState[key] = base.dynamicState[key];
+    const value = Number(repaired.dynamicState[key]);
+    repaired.dynamicState[key] = Number.isFinite(value) ? clampStateValue(value) : base.dynamicState[key];
   }
 
   return repaired;
@@ -156,21 +164,46 @@ function incrementTurnCount(state) {
   return next;
 }
 
-function applyOneLevel(current, delta) {
-  const index = LEVELS.indexOf(current);
-  if (index === -1 || !DELTAS.has(delta)) return current;
-  if (delta === 'keep') return current;
-  if (delta === 'slight_up') return LEVELS[Math.min(index + 1, LEVELS.length - 1)];
-  return LEVELS[Math.max(index - 1, 0)];
+function clampStateValue(value) {
+  return Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+}
+
+function applyStateResistance(current, rawDelta, key) {
+  const sensitivity = STATE_SENSITIVITY[key] ?? 1;
+  let adjusted = rawDelta * sensitivity;
+
+  if (adjusted > 0) {
+    if (current >= 85) adjusted *= 0.2;
+    else if (current >= 70) adjusted *= 0.4;
+    else if (current >= 60) adjusted *= 0.7;
+  } else if (adjusted < 0) {
+    if (current <= 15) adjusted *= 0.2;
+    else if (current <= 30) adjusted *= 0.4;
+    else if (current <= 40) adjusted *= 0.7;
+  }
+
+  if (adjusted > 0 && adjusted < 1) adjusted = 1;
+  if (adjusted < 0 && adjusted > -1) adjusted = -1;
+
+  return Math.round(adjusted);
 }
 
 function applyStateDelta(dynamicState, stateDelta = {}) {
   const current = { ...createEmptyState().dynamicState, ...(dynamicState || {}) };
   const next = { ...current };
   for (const key of Object.keys(current)) {
-    next[key] = applyOneLevel(current[key], stateDelta[key] || 'keep');
+    const delta = Number(stateDelta[key] || 0);
+    const effectiveDelta = Number.isFinite(delta) ? applyStateResistance(current[key], delta, key) : 0;
+    next[key] = clampStateValue(current[key] + effectiveDelta);
   }
   return next;
+}
+
+function describeStateLevel(value) {
+  const n = clampStateValue(value);
+  if (n < 30) return 'low';
+  if (n < 70) return 'medium';
+  return 'high';
 }
 
 function applyShortTermUpdate(shortTermState, shortTermUpdate = {}) {
@@ -284,7 +317,7 @@ function applyTurnResult(state, turnOutput) {
 }
 
 module.exports = {
-  LEVELS,
+  STATE_KEYS,
   getStatePath,
   createEmptyState,
   repairState,
@@ -295,6 +328,9 @@ module.exports = {
   incrementSessionCount,
   incrementTurnCount,
   applyStateDelta,
+  clampStateValue,
+  applyStateResistance,
+  describeStateLevel,
   applyShortTermUpdate,
   mergeMemoryUpdate,
   storeLastTurnTts,

@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const ENV_PATH = process.env.CYBER_GF_ENV_FILE || path.resolve(process.cwd(), '.env.cyber-gf');
+const ENV_PATH = '/root/.openclaw/workspace/.env.cyber-gf';
 let loaded = false;
 
 function loadEnvFile() {
@@ -26,9 +26,9 @@ function loadEnvFile() {
 function getConfig() {
   loadEnvFile();
   return {
-    stateFile: process.env.CYBER_GF_STATE_FILE || path.resolve(process.cwd(), '.cyber-gf-state.json'),
-    historyFile: process.env.CYBER_GF_HISTORY_FILE || path.resolve(process.cwd(), '.cyber-gf-history.json'),
-    ttsOutputDir: process.env.CYBER_GF_TTS_OUTPUT_DIR || path.resolve(process.cwd(), 'tts-cyber-gf'),
+    stateFile: process.env.CYBER_GF_STATE_FILE || '/root/.openclaw/workspace/.cyber-gf-state.json',
+    historyFile: process.env.CYBER_GF_HISTORY_FILE || '/root/.openclaw/workspace/.cyber-gf-history.json',
+    ttsOutputDir: process.env.CYBER_GF_TTS_OUTPUT_DIR || '/root/.openclaw/workspace/tts-cyber-gf',
     llm: {
       baseUrl: process.env.CYBER_GF_LLM_BASE_URL || '',
       apiKey: process.env.CYBER_GF_LLM_API_KEY || '',
@@ -36,7 +36,7 @@ function getConfig() {
       providerStyle: process.env.CYBER_GF_LLM_PROVIDER_STYLE || 'openai-compatible'
     },
     tts: {
-      baseUrl: process.env.XIAOMI_BASE_URL || '',
+      baseUrl: process.env.XIAOMI_BASE_URL || 'https://fufu.iqach.top/v1',
       apiKey: process.env.XIAOMI_API_KEY || '',
       model: process.env.XIAOMI_TTS_MODEL || 'mimo-v2.5-tts',
       voice: process.env.XIAOMI_TTS_VOICE || '茉莉',

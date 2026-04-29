@@ -1,244 +1,165 @@
-# CyberPersona
+# CyberPersona / Cyber Girlfriend Runtime
 
-CyberPersona is a hybrid runtime for long-lived AI personas and companion-style characters.
+更新时间：2026-04-29
 
-It is designed for characters that persist across sessions, evolve through interaction, maintain relationship continuity, and optionally express themselves through voice as part of personality rather than as a bolt-on feature.
+这是一个围绕 **长期关系型 persona + Xiaomi MiMo TTS** 构建的本地运行时子项目。
 
-## Current status
+## 它和 OpenClaw 是什么关系？
 
-This repository is the **first working implementation** of CyberPersona.
+简单说：
 
-The first implemented mode is:
-- **Cyber Girlfriend mode**
+- **这个项目不是 OpenClaw 本体**
+- **它是一个可以接进 OpenClaw 的 persona/runtime 子系统**
 
-The long-term goal is broader:
-- romantic personas
-- companion personas
-- comfort / support personas
-- custom long-lived characters
-- multiple relationship styles and persona modes
+当前分工是：
 
----
+- **OpenClaw / agent 侧**
+  - 负责理解上下文
+  - 负责生成 `InitialStatePayload` / `TurnResultPayload`
+  - 负责把 live chat 消息路由到这套 flow
 
-## Architecture
+- **CyberPersona 本地运行层**
+  - 负责状态持久化
+  - 负责 turn payload 应用
+  - 负责 Xiaomi MiMo TTS
+  - 负责 Telegram voice-note payload 准备
 
-CyberPersona uses a **hybrid model**:
+所以答案是：
 
-### Agent / runtime layer
-Responsible for:
-- long-context understanding
-- initial persona construction
-- per-turn structured generation
-- relationship-aware reasoning
+## 可以接入 OpenClaw 吗？
 
-### Local execution layer
-Responsible for:
-- persistent state storage
-- deterministic state transition application
-- revealed memory consolidation
-- MiMo TTS execution
-- Telegram voice-note payload generation
-- startup self-checks
-- debug inspection
+**可以，而且当前仓库已经保留了接入骨架。**
 
-This separation keeps the character's “mind” with the agent while keeping local state and side effects deterministic and inspectable.
+目前相关文件包括：
 
----
+- `docs/runtime-integration.md`
+- `openclaw-cyber-gf-adapter.js`
+- `test-openclaw-cyber-gf-adapter.js`
+- `test-openclaw-cyber-gf-live-loop.js`
 
-## Repository layout
+当前状态更准确地说是：
+
+- **本地正式主线已可用**
+- **OpenClaw 适配层已实现并可测试**
+- **还没有把它完全做成 OpenClaw runtime core 的内建功能**
+
+也就是说，它已经不是“纯概念上的能接”，而是已经到了“有可执行适配层和集成测试骨架”的阶段。
+
+当前这条主线已经收敛到一个明确的正式策略：
+
+- 模型：`mimo-v2.5-tts`
+- 音色：`茉莉`
+- 控制方式：**tag_only**
+- `naturalStylePrompt`：保留为兼容字段，但正式链路默认留空
+- runtime normalize：在应用 turn payload 前自动做标签减负与输出收口
+
+## 先看哪里
+
+如果你是第一次接手，建议按这个顺序看：
+
+1. `PROJECT-STATUS.md`
+2. `CYBER_GIRLFRIEND.md`
+3. `XIAOMI-TTS-CONFIG.md`
+4. `TTS-TAG-STYLE-GUIDE.md`
+5. `AUTOMATION.md`
+6. `SUBMISSION-GUIDE.md`
+
+## 主线文件
+
+### 代码
+- `cyber-gf-controller.js`
+- `cyber-gf-turn.js`
+- `cyber-gf-tts.js`
+- `cyber-gf-prompts.js`
+- `cyber-gf-state.js`
+- `cyber-gf-profile.js`
+- `cyber-gf-config.js`
+
+### 文档
+- `CYBER_GIRLFRIEND.md`
+- `PROJECT-STATUS.md`
+- `RELEASE-NOTES-2026-04-29.md`
+- `AUTOMATION.md`
+- `SUBMISSION-GUIDE.md`
+- `MAINTAINER-CHECKLIST.md`
+
+## 快速开始
+
+### 1. 配置
+
+```bash
+cp .env.cyber-gf.example .env.cyber-gf
+```
+
+填入你自己的实际配置。
+
+### 2. 校验正式链路
+
+```bash
+node verify-production-readiness.js
+```
+
+预期输出：
 
 ```text
-.
-├── cyber-gf-config.js
-├── cyber-gf-controller.js
-├── cyber-gf-profile.js
-├── cyber-gf-prompts.js
-├── cyber-gf-state.js
-├── cyber-gf-tts.js
-├── cyber-gf-turn.js
-├── docs/
-│   └── cyber-girlfriend-mode.md
-├── examples/
-│   └── .env.cyber-gf.example
-├── CYBER_GIRLFRIEND.md
-├── .gitignore
-└── README.md
+production-readiness-ok
 ```
 
-Notes:
-- Current file names still use the `cyber-gf-*` prefix because the first mode is Cyber Girlfriend.
-- The next refactor should move toward a broader `cyberpersona-*` or `modes/` layout.
-
----
-
-## What each file does
-
-- `cyber-gf-controller.js` — main local controller and unified flow entrypoints
-- `cyber-gf-state.js` — persistent state model and transition logic
-- `cyber-gf-profile.js` — initial payload validation and state construction
-- `cyber-gf-turn.js` — turn payload validation and fallback behavior
-- `cyber-gf-tts.js` — MiMo TTS execution with retry and diagnostics
-- `cyber-gf-prompts.js` — prompt builders for agent-side generation
-- `cyber-gf-config.js` — env/config loading and startup validation
-- `docs/cyber-girlfriend-mode.md` — mode-specific behavior and flow contract
-
----
-
-## Quick start
-
-### 1. Clone the repository
+### 3. 构建提交副本（可选）
 
 ```bash
-git clone https://github.com/harrylarryxyz/CyberPersona.git
-cd CyberPersona
+node build-submission-bundle.js
 ```
 
-### 2. Create local config
+输出目录：
 
-```bash
-cp examples/.env.cyber-gf.example .env.cyber-gf
+```text
+submission-bundle/
 ```
 
-Then fill in your real MiMo / local runtime values.
-
-### 3. Required local config fields
-
-At minimum:
-
-- `XIAOMI_BASE_URL`
-- `XIAOMI_API_KEY`
-- `XIAOMI_TTS_MODEL`
-- `XIAOMI_TTS_VOICE`
-- `XIAOMI_TTS_FORMAT`
-- `CYBER_GF_STATE_FILE`
-- `CYBER_GF_HISTORY_FILE`
-- `CYBER_GF_TTS_OUTPUT_DIR`
-
-Optional debug flags:
-
-- `CYBER_GF_DEBUG`
-- `CYBER_GF_DEBUG_TTS`
-
-### 4. Start / exit / clear
-
-```bash
-node cyber-gf-controller.js 开始赛博女友
-node cyber-gf-controller.js 退出赛博女友
-node cyber-gf-controller.js 我们分手吧
-```
-
-### 5. Inspect state
+## 常用命令
 
 ```bash
 node cyber-gf-controller.js status
+node cyber-gf-controller.js 开始赛博女友
+node cyber-gf-controller.js run-start-flow ./_sample_start_payload.json
+node cyber-gf-controller.js run-turn-flow ./_sample_turn_payload.json
 ```
 
-### 6. Debug tools
+## 当前项目边界
 
-```bash
-node cyber-gf-controller.js debug-on
-node cyber-gf-controller.js debug-last
-node cyber-gf-controller.js debug-off
-```
+### 正式链路
+- 当前唯一事实来源：主工作区
+- TTS 正式策略：`tag_only`
+- `naturalStylePrompt` 默认留空
 
-### 7. Voice-related helpers
+### 实验资产
+以下脚本保留，但不代表正式链路推荐策略：
+- `xiaomi-tts-compare-test.js`
+- `xiaomi-tts-style-test.js`
+- `xiaomi-tts-emotion-test.js`
+- `xiaomi-tts-voicedesign-test.js`
+- `xiaomi-tts-official-ab-test.js`
 
-```bash
-node cyber-gf-controller.js last-audio
-node cyber-gf-controller.js voice-send-payload
-node cyber-gf-controller.js voice-delivery-info
-```
+### 历史快照
+- `CyberPersona-export/` 当前只作为历史导出快照与参考资料
+- 它不是当前事实来源
 
----
+## 自动化
 
-## Flow model
+见：
+- `AUTOMATION.md`
+- `verify-production-readiness.js`
+- `build-submission-bundle.js`
 
-### Start flow
+## Live runtime 适配层
 
-If no state exists:
-1. Run startup self-check
-2. Generate `InitialStatePayload` on the agent side
-3. Apply it through `run-start-flow`
-4. Deliver the opening message
+如果要把本地 flow 接进 OpenClaw / live chat 的最后一跳收口，见：
 
-### Turn flow
+- `openclaw-cyber-gf-adapter.js`
+- `docs/runtime-integration.md`
 
-For each user turn:
-1. Build context from saved state and recent history
-2. Generate `TurnResultPayload` on the agent side
-3. Apply it through `run-turn-flow`
-4. If `sendVoiceNow=true`, generate audio and prepare Telegram voice-note delivery
-5. Deliver either text or voice-note according to the unified delivery contract
-
----
-
-## Main commands
-
-### Build agent-facing payloads
-
-```bash
-node cyber-gf-controller.js turn-payload "你在干嘛"
-```
-
-### Apply generated payloads
-
-```bash
-node cyber-gf-controller.js apply-start-payload /path/to/initial-payload.json
-node cyber-gf-controller.js apply-turn-payload /path/to/turn-payload.json
-```
-
-### Run unified flows
-
-```bash
-node cyber-gf-controller.js run-start-flow /path/to/initial-payload.json
-node cyber-gf-controller.js run-turn-flow /path/to/turn-payload.json
-```
-
----
-
-## Telegram voice notes
-
-CyberPersona does not rely on file extension alone for Telegram voice-note delivery.
-
-Correct delivery uses:
-- generated audio file
-- `message` send payload
-- `asVoice=true`
-
-The controller can prepare this payload from the latest generated audio.
-
----
-
-## Current limitations
-
-### 1. Naming is still first-mode-specific
-Current source files still use `cyber-gf-*` names.
-
-### 2. Full session auto-wiring is not yet embedded in runtime core
-The local execution layer is ready, but the surrounding runtime still needs to invoke `run-start-flow` and `run-turn-flow` automatically inside the final chat loop.
-
-### 3. TTS naturalness still needs refinement
-The TTS chain works, but prompt/style control still needs dedicated tuning so audio sounds less over-directed.
-
----
-
-## Security notes
-
-Do **not** commit:
-- real `.env` files
-- generated state/history files
-- audio output
-- workspace memory
-- local secrets or tokens
-
-This repository intentionally excludes those files.
-
----
-
-## Roadmap
-
-1. Generalize the current Cyber Girlfriend implementation into a multi-mode persona runtime
-2. Rename / reorganize code into a broader CyberPersona structure
-3. Finish runtime auto-wiring for live chat usage
-4. Improve TTS style generation and voice selection strategy
-5. Add mode registry / persona registry abstractions
+这层专门负责：
+- 文本 / 语音分流
+- voice-note send 后返回精确 `NO_REPLY`
+- 压掉已知的尾句泄露（如 `No further note from me.`）

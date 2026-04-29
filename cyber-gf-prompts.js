@@ -57,7 +57,7 @@ JSON 结构如下：
   "openingMessage": ""
 }
 
-其中 dynamicStateInit 只能使用 low / medium / high 三档。openingMessage 是开始赛博女友后她自然出现的第一句话，要符合刚生成的人设与关系起点。只输出 JSON。`;
+其中 dynamicStateInit 使用 0-100 数值，表示各项关系状态的初始强度；建议保持克制，尤其是 vulnerabilityWillingness 与 voiceEase 不要起步过高。openingMessage 是开始赛博女友后她自然出现的第一句话，要符合刚生成的人设与关系起点。只输出 JSON。`;
 }
 
 function buildTurnAgentPrompt(turnContextPayload) {
@@ -84,12 +84,12 @@ function buildTurnAgentPrompt(turnContextPayload) {
   "currentEmotion": "",
   "sendVoiceNow": false,
   "stateDelta": {
-    "relationshipWarmth": "keep",
-    "safety": "keep",
-    "trust": "keep",
-    "approachDesire": "keep",
-    "vulnerabilityWillingness": "keep",
-    "voiceEase": "keep"
+    "relationshipWarmth": 0,
+    "safety": 0,
+    "trust": 0,
+    "approachDesire": 0,
+    "vulnerabilityWillingness": 0,
+    "voiceEase": 0
   },
   "shortTermUpdate": {
     "unresolvedEmotion": "",
@@ -108,13 +108,21 @@ function buildTurnAgentPrompt(turnContextPayload) {
 
 规则：
 - visibleText 是给用户看的真实聊天文字
-- taggedTtsText 是 MiMo 音频标签控制文本，要与 visibleText 语义一致
-- naturalStylePrompt 是 MiMo 自然语言控制，要补足表演逻辑，而不是复述标签
+- taggedTtsText 是 MiMo 音频标签控制文本，要与 visibleText 语义一致；只使用必要的开头风格标签和少量中途音频标签，不要堆砌标签
+- naturalStylePrompt 字段保留是为了协议兼容；对当前正式链路所用的 mimo-v2.5-tts + 内置音色，默认应输出空字符串
+- 不要做双重控制；如果后续切换到其他模型或专门实验链路，再单独决定是否启用 naturalStylePrompt
+- 只有在明确实验链路里，naturalStylePrompt 才作为 MiMo role:user 的自然语言控制，且仍然只描述语气、节奏、情绪和说话方式
+- 禁止使用“像在演”“像导演指导演员”“前面怎样中间怎样后面怎样”这类分段式描述
 - sendVoiceNow 表示：以她这个人和当前关系状态，这一轮她会不会自然地直接用语音回应
-- stateDelta 只能使用 slight_up / slight_down / keep，且必须克制，大多数轮次 0~2 项轻微变化即可
+- stateDelta 使用数值增量，必须克制；大多数轮次总变化应很小
 - 如果当前轮涉及过去事实，优先检查 revealedFacts，一旦新事实说出口，写进 revealedFactsAdd
-- 即使 sendVoiceNow=false，也必须给出完整 taggedTtsText 和 naturalStylePrompt
+- 即使 sendVoiceNow=false，也必须给出完整 taggedTtsText；但 naturalStylePrompt 可以为空字符串
 - lastSummary 必须重写成简短关系局面摘要，不是流水账
+
+输出倾向：
+- 当前正式链路：统一优先 tag_only
+- naturalStylePrompt 在正式链路里默认留空
+- 目标不是表现力最大，而是像她自然会这么说
 
 下面是当前 JSON：
 ${JSON.stringify(turnContextPayload, null, 2)}`;

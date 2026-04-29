@@ -10,11 +10,12 @@ const {
   applyTurnResult,
   setDebugEnabled,
   isDebugEnabled,
-  storeLastGeneratedAudio
+  storeLastGeneratedAudio,
+  describeStateLevel
 } = require('./cyber-gf-state');
-const { buildInitialState, validateInitialProfile } = require('./cyber-gf-profile');
-const { validateTurnOutput, createFallbackTurnOutput } = require('./cyber-gf-turn');
-const { generateTtsAudio, generateFromLastTurn, probeTtsChain } = require('./cyber-gf-tts');
+const { buildInitialState, validateInitialProfile, resolveInitialProfilePayload } = require('./cyber-gf-profile');
+const { validateTurnOutput, createFallbackTurnOutput, normalizeTurnStateDelta } = require('./cyber-gf-turn');
+const { generateTtsAudio, generateFromLastTurn, probeTtsChain, sanitizeNaturalStylePrompt, normalizeTaggedTtsText } = require('./cyber-gf-tts');
 const { buildInitialProfileAgentPrompt, buildTurnAgentPrompt } = require('./cyber-gf-prompts');
 
 function getHistoryPath() {
@@ -47,18 +48,19 @@ function getRecentContext(limit = 4) {
 }
 
 function formatStatus(state) {
+  const fmt = (label, value) => `${label}: ${value} (${describeStateLevel(value)})`;
   return [
     '💗 赛博女友状态',
     '========================',
     `已开启: ${state.mode.enabled ? '是' : '否'}`,
     `人设摘要: ${state.profile.profileSummary || '暂无'}`,
     `关系摘要: ${state.revealedMemory.lastSummary || '暂无'}`,
-    `关系温度: ${state.dynamicState.relationshipWarmth}`,
-    `安全感: ${state.dynamicState.safety}`,
-    `信任感: ${state.dynamicState.trust}`,
-    `主动靠近意愿: ${state.dynamicState.approachDesire}`,
-    `暴露意愿: ${state.dynamicState.vulnerabilityWillingness}`,
-    `语音自然度: ${state.dynamicState.voiceEase}`,
+    fmt('关系温度', state.dynamicState.relationshipWarmth),
+    fmt('安全感', state.dynamicState.safety),
+    fmt('信任感', state.dynamicState.trust),
+    fmt('主动靠近意愿', state.dynamicState.approachDesire),
+    fmt('暴露意愿', state.dynamicState.vulnerabilityWillingness),
+    fmt('语音自然度', state.dynamicState.voiceEase),
     `最近未解情绪: ${state.shortTermState.unresolvedEmotion}`,
     '========================'
   ].join('\n');
@@ -76,6 +78,29 @@ function buildTurnDebugInfo(turnOutput) {
     lines.push(`naturalStylePrompt: ${turnOutput.naturalStylePrompt}`);
   }
   return lines.join('\n');
+}
+
+function normalizeTurnPayloadForRuntime(turnOutput, userMessage = '') {
+  const text = String(userMessage || '').trim();
+  const isSleepLike = /睡|晚安|哄我睡|陪我睡/.test(text);
+
+  const next = {
+    ...turnOutput,
+    taggedTtsText: normalizeTaggedTtsText(turnOutput.taggedTtsText || turnOutput.visibleText || ''),
+    naturalStylePrompt: ''
+  };
+
+  if (!next.taggedTtsText && next.visibleText) {
+    next.taggedTtsText = next.visibleText.trim();
+  }
+
+  if (isSleepLike && next.taggedTtsText && !/^[（(\[]/.test(next.taggedTtsText)) {
+    next.taggedTtsText = `（轻声，温柔）${next.taggedTtsText}`;
+  }
+
+  next.naturalStylePrompt = sanitizeNaturalStylePrompt(next.naturalStylePrompt || '');
+  next.naturalStylePrompt = '';
+  return next;
 }
 
 function setCyberGfDebug(flag) {
@@ -172,7 +197,8 @@ function buildUnifiedDelivery(turnOutput, options = {}) {
   const debugText = buildTurnDebugInfo(turnOutput);
   const target = options.target || 'telegram:8121382159';
   const audio = state?.runtimeCache?.lastGeneratedAudio;
-  const voicePayload = turnOutput.sendVoiceNow ? buildVoiceSendPayloadFromAudio(audio, target) : null;
+  const voiceAllowed = turnOutput.sendVoiceNow && options.voiceFailed !== true;
+  const voicePayload = voiceAllowed ? buildVoiceSendPayloadFromAudio(audio, target) : null;
 
   return {
     mode: voicePayload ? 'voice_note' : 'text_reply',
@@ -383,16 +409,17 @@ function buildTurnPayload(userMessage) {
   };
 }
 
-function applyInitialStatePayload(initialPayload) {
-  const validated = validateInitialProfile(initialPayload);
-  if (!validated.ok) {
-    throw new Error(validated.error);
+function applyInitialStatePayload(initialPayload, options = {}) {
+  const resolved = resolveInitialProfilePayload(initialPayload, options);
+  if (!resolved.ok) {
+    throw new Error(resolved.reason || 'Initial profile payload invalid');
   }
-  let state = buildInitialState(validated.value);
+  let state = buildInitialState(resolved.value);
   state = saveState(state);
   return {
     state,
-    openingMessage: validated.value.openingMessage
+    openingMessage: resolved.value.openingMessage,
+    resolution: resolved.resolution || 'as_is'
   };
 }
 
@@ -401,19 +428,27 @@ function applyTurnResultPayload(turnResultPayload, userMessage = '') {
   if (!validated.ok) {
     throw new Error(validated.error);
   }
+  const runtimeNormalized = normalizeTurnPayloadForRuntime(validated.value, userMessage);
+  const normalized = normalizeTurnStateDelta(runtimeNormalized.stateDelta || {}, userMessage);
+  const output = {
+    ...runtimeNormalized,
+    stateDelta: normalized.stateDelta
+  };
   let state = loadState();
   if (!state) {
     throw new Error('No cyber girlfriend state exists');
   }
   if (userMessage) appendHistory('user', userMessage);
-  appendHistory('assistant', validated.value.visibleText);
-  state = applyTurnResult(state, validated.value);
+  appendHistory('assistant', output.visibleText);
+  state = applyTurnResult(state, output);
   state.mode.enabled = true;
   state = saveState(state);
   return {
     state,
-    turnOutput: validated.value,
-    debugText: buildTurnDebugInfo(validated.value)
+    turnOutput: output,
+    eventType: normalized.eventType,
+    deltaBudget: normalized.budget,
+    debugText: buildTurnDebugInfo(output)
   };
 }
 
@@ -440,25 +475,88 @@ async function runTurnResultFlow(turnResultPayload, options = {}) {
   const userMessage = options.userMessage || turnResultPayload.__userMessage || '';
   const applied = applyTurnResultPayload(turnResultPayload, userMessage);
   let audio = null;
+  let voiceError = null;
   if (applied.turnOutput.sendVoiceNow) {
-    audio = await speakTurnPayload(applied.turnOutput);
+    try {
+      audio = await speakTurnPayload(applied.turnOutput);
+    } catch (err) {
+      voiceError = err;
+    }
   }
-  const delivery = buildUnifiedDelivery(applied.turnOutput, { target: options.target });
+  const delivery = buildUnifiedDelivery(applied.turnOutput, {
+    target: options.target,
+    voiceFailed: !!voiceError
+  });
   return {
     kind: 'turn_flow',
     applied,
     audio,
-    delivery
+    delivery,
+    voiceError: voiceError ? (voiceError.message || String(voiceError)) : null
   };
 }
 
-async function runStartFlow(initialPayload) {
-  const applied = applyInitialStatePayload(initialPayload);
+async function runStartFlow(initialPayload, options = {}) {
+  const applied = applyInitialStatePayload(initialPayload, options);
   return {
     kind: 'start_flow',
     applied,
     delivery: buildStartDelivery(applied.openingMessage)
   };
+}
+
+async function runStartFlowWithRetries(generateInitialPayload, options = {}) {
+  if (typeof generateInitialPayload !== 'function') {
+    throw new Error('generateInitialPayload function is required');
+  }
+
+  const maxAttempts = Number(options.maxAttempts || 3);
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const payload = await generateInitialPayload({ attempt, maxAttempts, lastError });
+    try {
+      const result = await runStartFlow(payload, { attempt, maxAttempts });
+      return {
+        ...result,
+        attempt,
+        maxAttempts,
+        resolution: result.applied?.resolution || 'as_is'
+      };
+    } catch (err) {
+      lastError = err;
+      const message = err?.message || String(err);
+      const retryable = /severely out of range|invalid/i.test(message);
+
+      if (attempt >= maxAttempts) {
+        const fallbackPayload = {
+          ...payload,
+          dynamicStateInit: {
+            relationshipWarmth: 50,
+            safety: 50,
+            trust: 50,
+            approachDesire: 50,
+            vulnerabilityWillingness: 30,
+            voiceEase: 20
+          }
+        };
+        const fallbackResult = await runStartFlow(fallbackPayload, { attempt, maxAttempts });
+        return {
+          ...fallbackResult,
+          attempt,
+          maxAttempts,
+          resolution: 'fallback_defaults',
+          recoveredFromError: message
+        };
+      }
+
+      if (!retryable) {
+        throw err;
+      }
+    }
+  }
+
+  throw lastError || new Error('Failed to generate initial profile payload');
 }
 
 async function startCyberGfHybrid() {
@@ -655,6 +753,7 @@ if (require.main === module) {
 
 module.exports = {
   getStatePayload,
+  normalizeTurnPayloadForRuntime,
   buildStartPayload,
   buildTurnPayload,
   buildVoiceSendPayloadFromAudio,
@@ -664,6 +763,7 @@ module.exports = {
   speakLastTurn,
   speakTurnPayload,
   runStartFlow,
+  runStartFlowWithRetries,
   runTurnResultFlow,
   startCyberGfHybrid,
   exitCyberGfHybrid,

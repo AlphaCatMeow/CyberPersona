@@ -124,7 +124,8 @@ Examples:
 - vulnerability willingness
 - voice ease
 
-These currently use bounded discrete levels:
+These currently use bounded numeric values from `0` to `100`.
+Human-readable status views may still map those values into:
 - `low`
 - `medium`
 - `high`
@@ -186,6 +187,13 @@ Normal chat output uses `visibleText`.
 TTS uses:
 - `taggedTtsText`
 - `naturalStylePrompt`
+
+For Xiaomi MiMo, these conceptually map to the officially documented request structure:
+- `naturalStylePrompt` → optional `messages[{ role: "user" }]`
+- `taggedTtsText` → `messages[{ role: "assistant" }]`
+
+In the current production path for this project, the runtime intentionally uses a tag_only strategy for `mimo-v2.5-tts` with the built-in voice: it sends only `taggedTtsText` and leaves `naturalStylePrompt` empty.
+The `naturalStylePrompt` field remains in the payload contract mainly for compatibility and experiments.
 
 These should not leak into normal user-visible chat unless debug is explicitly enabled.
 

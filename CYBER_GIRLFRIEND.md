@@ -44,6 +44,7 @@
   - 固定人物骨架摘要
 - `dynamicState` + `shortTermState`
   - 关系变化、短期情绪余波
+  - 其中 `dynamicState` 现在使用 `0-100` 数值表示强度，状态页再映射成 `low / medium / high`
 - `revealedMemory`
   - 已经说出口并固化的事实、习惯、昵称、事件、关系摘要
 
@@ -71,7 +72,8 @@
 规则：
 
 - **聊天正文只显示 `visibleText`**
-- **MiMo TTS 使用 `taggedTtsText + naturalStylePrompt`**
+- **MiMo TTS 在本项目正式链路中只使用 `taggedTtsText`；`naturalStylePrompt` 保留为兼容字段，但正式输出默认留空**
+- `stateDelta` 现在使用数值增量，单轮应保持克制，通常落在小范围正负波动内
 - 不把音频标签直接暴露在正常聊天正文里
 
 ---
@@ -98,31 +100,31 @@
 ### 1. 启动 / 退出 / 清空
 
 ```bash
-node cyber-gf-controller.js 开始赛博女友
-node cyber-gf-controller.js 退出赛博女友
-node cyber-gf-controller.js 我们分手吧
+node /root/.openclaw/workspace/cyber-gf-controller.js 开始赛博女友
+node /root/.openclaw/workspace/cyber-gf-controller.js 退出赛博女友
+node /root/.openclaw/workspace/cyber-gf-controller.js 我们分手吧
 ```
 
 ### 2. 查看状态
 
 ```bash
-node cyber-gf-controller.js status
+node /root/.openclaw/workspace/cyber-gf-controller.js status
 ```
 
 ### 3. Debug 控制
 
 ```bash
-node cyber-gf-controller.js debug-on
-node cyber-gf-controller.js debug-off
-node cyber-gf-controller.js debug-last
+node /root/.openclaw/workspace/cyber-gf-controller.js debug-on
+node /root/.openclaw/workspace/cyber-gf-controller.js debug-off
+node /root/.openclaw/workspace/cyber-gf-controller.js debug-last
 ```
 
 ### 4. 最近语音信息
 
 ```bash
-node cyber-gf-controller.js last-audio
-node cyber-gf-controller.js voice-send-payload
-node cyber-gf-controller.js voice-delivery-info
+node /root/.openclaw/workspace/cyber-gf-controller.js last-audio
+node /root/.openclaw/workspace/cyber-gf-controller.js voice-send-payload
+node /root/.openclaw/workspace/cyber-gf-controller.js voice-delivery-info
 ```
 
 ### 5. 正式 flow 入口
@@ -130,13 +132,13 @@ node cyber-gf-controller.js voice-delivery-info
 #### start flow
 
 ```bash
-node cyber-gf-controller.js run-start-flow /path/to/initial-payload.json
+node /root/.openclaw/workspace/cyber-gf-controller.js run-start-flow /path/to/initial-payload.json
 ```
 
 #### turn flow
 
 ```bash
-node cyber-gf-controller.js run-turn-flow /path/to/turn-result.json
+node /root/.openclaw/workspace/cyber-gf-controller.js run-turn-flow /path/to/turn-result.json
 ```
 
 ---
@@ -282,8 +284,21 @@ Debug 开关来源：
 因此后续应单独优化：
 
 - 更克制的标签
-- 更自然的 style prompt
+- 更短、更贴近 Xiaomi 官方推荐用法的 style prompt
 - 场景化 voice 选择
+
+补充：基于 2026-04-29 的实测和主观试听反馈，双重控制听感不佳。正式链路统一优先 `tag_only`，`naturalStylePrompt` 默认留空，不再作为正式输出的一部分。
+
+同时，正式链路会对 `taggedTtsText` 做规范化：压缩成开头少量整体标签、去掉多余动作提示、避免“像在指导表演”的重标签写法。
+
+另外，正式链路在 controller 应用 turn payload 前，会再做一次 runtime normalize：
+
+- 清空 `naturalStylePrompt`
+- 自动收缩 `taggedTtsText` 标签密度
+- 去除多余动作提示
+- 在少数明确哄睡语境下，若完全没标签，可补一个极轻的开头整体标签
+
+当前正式链路允许的高频标签集合也被刻意收窄，主要保留：`轻声`、`温柔`、`委屈`、`嘴硬`、`开心`、`悲伤`、`害羞`、`心软`。
 
 ---
 

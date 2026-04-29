@@ -3,6 +3,10 @@ const fs = require('fs');
 const path = require('path');
 const { getConfig } = require('./cyber-gf-config');
 
+const BUILTIN_VOICE_MODELS = new Set(['mimo-v2.5-tts', 'mimo-v2-tts']);
+const VOICE_DESIGN_MODELS = new Set(['mimo-v2.5-tts-voicedesign']);
+const VOICE_CLONE_MODELS = new Set(['mimo-v2.5-tts-voiceclone']);
+
 function getTtsConfig() {
   const config = getConfig();
   return {
@@ -11,21 +15,147 @@ function getTtsConfig() {
   };
 }
 
+function sanitizeNaturalStylePrompt(input) {
+  const text = String(input || '').replace(/\s+/g, ' ').trim();
+  if (!text) return '';
+
+  return text
+    .replace(/(^|\s)(Role|Scene|Guidance)\s*:/gi, ' ')
+    .replace(/导演模式|分镜|舞台调度|镜头感|角色小传|电影旁白腔/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 220);
+}
+
+function sanitizeTaggedTtsText(input) {
+  const text = String(input || '').replace(/\s+/g, ' ').trim();
+  if (!text) return '';
+  const normalized = normalizeTaggedTtsText(text);
+  return normalized.slice(0, 1000);
+}
+
+function splitLeadingTagAndBody(text) {
+  const match = text.match(/^[（(\[]([^）)\]]+)[）)\]]\s*(.*)$/s);
+  if (!match) return { tagContent: '', body: text.trim() };
+  return {
+    tagContent: String(match[1] || '').trim(),
+    body: String(match[2] || '').trim()
+  };
+}
+
+function normalizeTagList(tagContent) {
+  const rawItems = String(tagContent || '')
+    .split(/[，,、\s]+/)
+    .map(x => x.trim())
+    .filter(Boolean);
+
+  const synonyms = new Map([
+    ['放轻一点', '轻声'],
+    ['声音轻一点', '轻声'],
+    ['慢一点', '慢一点'],
+    ['放慢一点', '慢一点'],
+    ['温柔一点', '温柔'],
+    ['带一点笑意', '笑意'],
+    ['压着笑意', '笑意'],
+    ['嘴硬地放软', '嘴硬'],
+    ['轻轻心软', '心软'],
+    ['贴近一点', '轻声']
+  ]);
+
+  const canonical = [];
+  for (const item of rawItems) {
+    const mapped = synonyms.get(item) || item;
+    if (!canonical.includes(mapped)) canonical.push(mapped);
+  }
+
+  const allowPriority = ['轻声', '温柔', '委屈', '嘴硬', '开心', '悲伤', '害羞', '心软'];
+  const filtered = canonical.filter(x => allowPriority.includes(x));
+  const finalTags = (filtered.length ? filtered : canonical).slice(0, 2);
+  return finalTags;
+}
+
+function normalizeBodyText(body) {
+  return String(body || '')
+    .replace(/\[(轻哼|停顿|沉默片刻|深呼吸|笑)\]/g, '')
+    .replace(/（沉默片刻）/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeTaggedTtsText(input) {
+  const text = String(input || '').trim();
+  if (!text) return '';
+
+  const { tagContent, body } = splitLeadingTagAndBody(text);
+  const cleanBody = normalizeBodyText(body || text);
+  if (!cleanBody) return '';
+
+  const tags = normalizeTagList(tagContent);
+  if (!tags.length) return cleanBody;
+  return `（${tags.join('，')}）${cleanBody}`;
+}
+
+function shouldUseStylePrompt(taggedTtsText, naturalStylePrompt) {
+  const style = sanitizeNaturalStylePrompt(naturalStylePrompt);
+  if (!style) return false;
+
+  const config = getTtsConfig();
+  if (BUILTIN_VOICE_MODELS.has(config.model)) {
+    return false;
+  }
+
+  const tagged = sanitizeTaggedTtsText(taggedTtsText);
+  const strongTags = /(哄睡|轻声|温柔|委屈|嘴硬|安抚|释然|悲伤|开心|兴奋)/;
+  const repairLike = /(别慌|我在呢|闭上眼|陪你|慢慢说|先睡|晚安)/;
+
+  if (strongTags.test(tagged) && !repairLike.test(tagged)) {
+    return false;
+  }
+
+  return true;
+}
+
+function buildAudioConfig(config) {
+  const audio = {
+    format: config.format || 'mp3'
+  };
+
+  if (BUILTIN_VOICE_MODELS.has(config.model)) {
+    audio.voice = config.voice || 'mimo_default';
+  }
+
+  return audio;
+}
+
 function buildTtsRequest(taggedTtsText, naturalStylePrompt) {
   const CONFIG = getTtsConfig();
+  const cleanTaggedText = sanitizeTaggedTtsText(taggedTtsText);
+  const cleanStylePrompt = sanitizeNaturalStylePrompt(naturalStylePrompt);
   const messages = [];
-  if (naturalStylePrompt && naturalStylePrompt.trim()) {
-    messages.push({ role: 'user', content: naturalStylePrompt.trim() });
+
+  if (!cleanTaggedText) {
+    throw new Error('TTS target text is empty');
   }
-  messages.push({ role: 'assistant', content: taggedTtsText });
-  return {
+
+  if (shouldUseStylePrompt(cleanTaggedText, cleanStylePrompt)) {
+    messages.push({ role: 'user', content: cleanStylePrompt });
+  } else if (VOICE_DESIGN_MODELS.has(CONFIG.model)) {
+    throw new Error('MiMo voice design model requires a user style description');
+  }
+
+  messages.push({ role: 'assistant', content: cleanTaggedText });
+
+  const payload = {
     model: CONFIG.model,
     messages,
-    audio: {
-      format: CONFIG.format,
-      voice: CONFIG.voice
-    }
+    audio: buildAudioConfig(CONFIG)
   };
+
+  if (VOICE_CLONE_MODELS.has(CONFIG.model) && !payload.audio.voice) {
+    throw new Error('MiMo voice clone model requires audio.voice to contain the base64 reference sample');
+  }
+
+  return payload;
 }
 
 function ensureOutputDir() {
@@ -125,6 +255,10 @@ async function probeTtsChain() {
 
 module.exports = {
   buildTtsRequest,
+  sanitizeNaturalStylePrompt,
+  sanitizeTaggedTtsText,
+  normalizeTaggedTtsText,
+  shouldUseStylePrompt,
   getTtsConfig,
   generateTtsAudio,
   generateFromLastTurn,

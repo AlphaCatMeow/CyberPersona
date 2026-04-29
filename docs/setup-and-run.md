@@ -10,7 +10,7 @@ cd CyberPersona
 ## Create config
 
 ```bash
-cp examples/.env.cyber-gf.example .env.cyber-gf
+cp .env.cyber-gf.example .env.cyber-gf
 ```
 
 Fill in your actual values before running flows.
