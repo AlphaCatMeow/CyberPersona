@@ -35,6 +35,41 @@ const DOCS = [
   path.join('docs', 'repository-scope.md')
 ];
 
+const PUBLIC_FILES_TO_SCAN = [
+  '.env.cyber-gf.example',
+  'README.md',
+  'PROJECT-STATUS.md',
+  'RELEASE-NOTES-2026-04-29.md',
+  'SUBMISSION-GUIDE.md',
+  'MAINTAINER-CHECKLIST.md',
+  'TTS-TESTS.md',
+  'TTS-TAG-STYLE-GUIDE.md',
+  'XIAOMI-TTS-CONFIG.md',
+  'CYBER_GIRLFRIEND.md',
+  'AUTOMATION.md',
+  'COMMIT-CANDIDATES.md',
+  'REPO-REORG-PLAN.md',
+  'cyber-gf-config.js',
+  'xiaomi-tts-batch-test.js',
+  'xiaomi-tts-compare-test.js',
+  'xiaomi-tts-style-test.js',
+  'xiaomi-tts-emotion-test.js',
+  'xiaomi-tts-voicedesign-test.js',
+  'xiaomi-tts-official-ab-test.js',
+  'xiaomi-tts-direct.js',
+  'mimo-omni-audio-eval.js',
+  'mimo-omni-eval/report.json',
+  path.join('docs', 'architecture.md'),
+  path.join('docs', 'repository-scope.md'),
+  path.join('docs', 'runtime-integration.md'),
+  path.join('docs', 'setup-and-run.md')
+];
+
+const FORBIDDEN_PUBLIC_ENDPOINT_PATTERNS = [
+  /https:\/\/fufu\.iqach\.top\/v1/i,
+  /XIAOMI_BASE_URL=https:\/\/(?!your-mimo-base-url\.example\/v1)/i
+];
+
 function readJson(rel) {
   return JSON.parse(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 }
@@ -117,6 +152,17 @@ function verifyDocs() {
   }
 }
 
+function verifyNoPublicEndpointLeak() {
+  for (const rel of PUBLIC_FILES_TO_SCAN) {
+    const full = path.join(ROOT, rel);
+    if (!fs.existsSync(full)) continue;
+    const text = readText(rel);
+    for (const pattern of FORBIDDEN_PUBLIC_ENDPOINT_PATTERNS) {
+      assert(!pattern.test(text), `${rel} contains forbidden public endpoint/config leakage matching ${pattern}`);
+    }
+  }
+}
+
 function runNodeScript(rel, expectedToken) {
   const output = cp.execFileSync(process.execPath, [path.join(ROOT, rel)], {
     cwd: ROOT,
@@ -138,6 +184,7 @@ function main() {
   verifyNormalization();
   verifyTtsRequestPolicy();
   verifyDocs();
+  verifyNoPublicEndpointLeak();
   verifyLiveAdapter();
   console.log('production-readiness-ok');
 }
