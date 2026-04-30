@@ -17,6 +17,9 @@ const {
 const { buildInitialState, validateInitialProfile } = require('./cyber-gf-profile');
 const { validateTurnOutput, createFallbackTurnOutput } = require('./cyber-gf-turn');
 const { generateTtsAudio, generateFromLastTurn, probeTtsChain } = require('./cyber-gf-tts');
+/**
+ * @deprecated Agent calls image-api skill scripts directly. This module is kept for backward compatibility only.
+ */
 const { generateImageWithRetry, editImageWithRetry } = require('./cyber-gf-image');
 const { buildInitialProfileAgentPrompt, buildTurnAgentPrompt, buildDebugTurnAgentPrompt } = require('./cyber-gf-prompts');
 const { createGamificationSystem } = require('./cyber-gf-gamification');
@@ -307,7 +310,7 @@ function buildStartPayload() {
   return {
     prompt: buildInitialProfileAgentPrompt(),
     envPath: ENV_PATH,
-    note: '让 agent 使用这个 prompt 生成 InitialStatePayload。生成后，agent 需要按顺序执行：1) 用 voiceDescription 调用 mimo_tts_voicedesign.py 生成音色样本（保存到 ~/.hermes/CyberPersona-hermes/.data/voice-sample.wav）；2) 将 voiceSamplePath 写入 payload；3) 调用 applyStartPayload(payload) 落盘；4) 调用 generateReferencePhoto() 生成参考照片；5) 生成角色展示照片（不同于参考照片，体现人物性格）；6) 用 voice clone 生成自我介绍语音；7) 输出角色信息卡（姓名、年龄、性格、外貌、声音、关系状态、游戏化参数）；8) 发送展示照片；9) 发送介绍语音；10) 发送 openingMessage。'
+    note: '让 agent 使用这个 prompt 生成 InitialStatePayload。生成后，agent 需要按顺序执行：1) 用 voiceDescription 调用 mimo_tts_voicedesign.py 生成音色样本（保存到 ~/.hermes/CyberPersona-hermes/.data/voice-sample.wav）；2) 将 voiceSamplePath 写入 payload；3) 调用 applyStartPayload(payload) 落盘；4) 调用 image-api skill 生成参考照片；5) 生成角色展示照片（不同于参考照片，体现人物性格）；6) 用 voice clone 生成自我介绍语音；7) 输出角色信息卡（姓名、年龄、性格、外貌、声音、关系状态、游戏化参数）；8) 发送展示照片；9) 发送介绍语音；10) 发送 openingMessage。'
   };
 }
 
@@ -473,30 +476,12 @@ function applyInitialStatePayload(initialPayload) {
  * Generate a reference ID photo from the character's appearance description.
  * This photo is used as the base for all subsequent character images (edit API).
  */
+/**
+ * @deprecated Agent calls image-api skill scripts directly for reference photo generation.
+ * Kept as CLI entry for backward compat only.
+ */
 async function generateReferencePhoto() {
-  const state = loadState();
-  if (!state) throw new Error('No cyber girlfriend state exists');
-  const appearance = state.profile.appearance;
-  if (!appearance) throw new Error('No appearance description in profile');
-
-  const prompt = `standard portrait photo, head and shoulders, neutral background, looking at camera, ${appearance}`;
-  const image = await generateImageWithRetry(prompt, { size: '1024x1024', quality: 'high' });
-
-  let currentState = loadState();
-  currentState.profile.referencePhotoPath = image.filepath;
-  currentState = saveState(currentState);
-
-  // 记录到图片文件管理器
-  try {
-    const imgManager = getImageFileManager();
-    imgManager.recordImage(image, { scene: 'reference', type: 'generate', prompt, isReference: true });
-  } catch {}
-
-  return {
-    image,
-    state: currentState,
-    referencePhotoPath: image.filepath
-  };
+  throw new Error("generateReferencePhoto is deprecated. Agent should call image-api skill directly.");
 }
 
 function applyTurnResultPayload(turnResultPayload, userMessage = '') {
@@ -545,25 +530,11 @@ function applyTurnResultPayload(turnResultPayload, userMessage = '') {
  * Generate a character image. Uses edit API with reference photo if available,
  * otherwise falls back to generate API. Ensures visual consistency.
  */
+/**
+ * @deprecated Agent calls image-api skill scripts directly for character image generation.
+ */
 async function generateCharacterImage(imagePrompt) {
-  const state = loadState();
-  const refPath = state?.profile?.referencePhotoPath;
-  const imgManager = getImageFileManager();
-  let image;
-
-  if (refPath && fs.existsSync(refPath)) {
-    try {
-      image = await editImageWithRetry(imagePrompt, refPath);
-      imgManager.recordImage(image, { scene: 'character', type: 'edit', prompt: imagePrompt });
-      return image;
-    } catch (err) {
-      console.error('[cyber-gf image] edit failed, falling back to generate:', err.message);
-    }
-  }
-
-  image = await generateImageWithRetry(imagePrompt);
-  imgManager.recordImage(image, { scene: 'character', type: 'generate', prompt: imagePrompt });
-  return image;
+  throw new Error("generateCharacterImage is deprecated. Agent should call image-api skill directly.");
 }
 
 async function speakLastTurn() {
@@ -579,49 +550,29 @@ async function speakTurnPayload(turnResultPayload) {
   if (!validated.ok) {
     throw new Error(validated.error);
   }
-  const audio = await generateTtsAudio(validated.value.visibleText, '');
+  const audio = await generateTtsAudio(validated.value.visibleText, "");
   const state = loadState();
   if (state) saveState(storeLastGeneratedAudio(state, audio));
-  let image = null;
-  if (validated.value.sendImageNow && validated.value.imagePrompt) {
-    try {
-      image = await generateCharacterImage(validated.value.imagePrompt);
-      const imgState = loadState();
-      if (imgState) saveState(storeLastGeneratedImage(imgState, image));
-    } catch (err) {
-      console.error('[cyber-gf image] generation failed:', err.message);
-    }
-  }
-  return { audio, image };
+  return { audio, image: null };
 }
 
 async function runTurnResultFlow(turnResultPayload, options = {}) {
-  const userMessage = options.userMessage || turnResultPayload.__userMessage || '';
+  const userMessage = options.userMessage || turnResultPayload.__userMessage || "";
   const applied = applyTurnResultPayload(turnResultPayload, userMessage);
   let audio = null;
-  let image = null;
   if (applied.turnOutput.sendVoiceNow) {
     const result = await speakTurnPayload(applied.turnOutput);
     audio = result.audio;
-    image = result.image;
-  } else if (applied.turnOutput.sendImageNow && applied.turnOutput.imagePrompt) {
-    try {
-      image = await generateCharacterImage(applied.turnOutput.imagePrompt);
-      const imgState = loadState();
-      if (imgState) saveState(storeLastGeneratedImage(imgState, image));
-    } catch (err) {
-      console.error('[cyber-gf image] generation failed:', err.message);
-    }
   }
   const delivery = buildUnifiedDelivery(applied.turnOutput, {
     target: options.target,
-    forceDebug: userMessage.startsWith('debug+')
+    forceDebug: userMessage.startsWith("debug+")
   });
   return {
-    kind: 'turn_flow',
+    kind: "turn_flow",
     applied,
     audio,
-    image,
+    image: null,
     delivery
   };
 }
@@ -816,11 +767,9 @@ async function handleHybridCommand(command, arg = '') {
     };
   }
   if (command === 'generate-reference-photo') {
-    const result = await generateReferencePhoto();
     return {
-      kind: 'reference_photo_generated',
-      visibleText: `参考照片已生成: ${result.referencePhotoPath}`,
-      ...result
+      kind: 'deprecated',
+      visibleText: 'generate-reference-photo 已废弃。请直接调用 image-api skill：\npython3 ~/.hermes/skills/image-api/scripts/image_api.py --json --size 1024x1024 --quality high --format png --moderation low "standard portrait photo, head and shoulders, neutral background, looking at camera, <appearance>"'
     };
   }
   if (command === 'apply-turn-payload') {

@@ -1,3 +1,8 @@
+/**
+ * @deprecated Agent calls image-api skill scripts directly (same pattern as mimo-tts).
+ * This module is kept for backward compatibility only.
+ * Use: python3 ~/.hermes/skills/image-api/scripts/image_api.py --json ...
+ */
 const { execFileSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
