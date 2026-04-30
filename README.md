@@ -1,13 +1,13 @@
 # CyberPersona 赛博女友
 
-基于 Hermes Agent 的角色扮演系统。通过结构化的状态管理、情绪深度系统、TTS 语音、图片生成和游戏化机制，实现一个有记忆、有性格、会成长的赛博女友。
+基于 Hermes Agent 的角色扮演系统。通过结构化的状态管理、情绪深度系统、图片生成和游戏化机制，实现一个有记忆、有性格、会成长的赛博女友。
 
 ## 特性
 
 - **情绪深度系统** — 6 维度积分制（信任感/安全感/亲密感/依恋度/占有欲/语音倾向度），情绪历史，长期情绪记忆
 - **记忆系统** — 跨 session 摘要，角色记忆（revealedFacts），情绪记忆（emotionalMemories）
-- **语音** — MiMo TTS voice design → clone 工作流，角色音色一致性
-- **图片** — gpt-image-2 生成 + 参考照片 edit API，人物形象一致
+- **语音** — Agent 直接调用 mimo-tts Python 脚本（voice design → clone 工作流），不再通过 JS 包装层
+- **图片** — Agent 直接调用 image-api Python 脚本，gpt-image-2 生成 + 参考照片 edit API
 - **表情包** — tangdouz API 免费表情包搜索，情绪驱动
 - **游戏化** — 18 个成就，好感度系统（0-1000），每日任务，收集系统
 - **上下文驱动** — LLM 根据完整上下文自然推理，不依赖规则引擎
@@ -24,7 +24,7 @@
 ### 安装
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/CyberPersona.git
+git clone https://github.com/harrylarryxyz/CyberPersona.git
 cd CyberPersona
 cp .env.cyber-gf.example .env.cyber-gf
 # 编辑 .env.cyber-gf 填入 API keys
@@ -37,19 +37,26 @@ cp .env.cyber-gf.example .env.cyber-gf
 ## 架构
 
 ```
+├── cyber-gf-config.js        # 配置加载
 ├── cyber-gf-controller.js    # 主控制器，CLI 入口，交付逻辑
 ├── cyber-gf-state.js         # 状态管理（动态状态、情绪历史、氛围因子）
 ├── cyber-gf-profile.js       # 角色档案验证与初始化
 ├── cyber-gf-turn.js          # 回合输出验证
 ├── cyber-gf-prompts.js       # LLM prompt 构建
 ├── cyber-gf-gamification.js  # 游戏化系统（成就/好感度/任务/收集）
-├── cyber-gf-image.js         # 图片生成与编辑
-├── cyber-gf-image-optimizer.js # 图片文件索引
-├── cyber-gf-tts.js           # TTS（已废弃，agent 直接调用 mimo-tts skill）
-├── cyber-gf-config.js        # 配置加载
 └── docs/
     └── DESIGN-EMOTIONAL-DEPTH.md  # 情绪深度系统设计文档
 ```
+
+## 关联 Skill
+
+本项目依赖以下 3 个 Hermes Agent 内置 Skill：
+
+- `mimo-v2-5-tts` — MiMo TTS 语音合成（voice design + clone）
+- `image-api` — gpt-image-2 图片生成与编辑
+- `mood-sticker` — 表情包搜索（tangdouz API）
+
+> 这些是 Hermes Agent 内置 Skill，自动可用。无需单独安装，确保 Hermes Agent 已正确配置即可。
 
 ## 状态系统
 
@@ -114,9 +121,9 @@ cp .env.cyber-gf.example .env.cyber-gf
 | 依赖 | 用途 |
 |------|------|
 | Hermes Agent | 运行环境，工具链 |
-| MiMo V2.5 TTS | 语音合成（voice design + clone） |
-| Image API (gpt-image-2) | 图片生成与编辑 |
-| mood-sticker | 表情包搜索（tangdouz API，免费） |
+| mimo-v2-5-tts (内置 Skill) | 语音合成（voice design + clone） |
+| image-api (内置 Skill) | 图片生成与编辑（gpt-image-2） |
+| mood-sticker (内置 Skill) | 表情包搜索（tangdouz API，免费） |
 | ffmpeg | 语音格式转码（wav→ogg） |
 
 ## License
