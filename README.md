@@ -24,8 +24,14 @@
 ### 安装
 
 ```bash
+# 1. 克隆项目
 git clone https://github.com/harrylarryxyz/CyberPersona.git
 cd CyberPersona
+
+# 2. 安装依赖 Skill（见下方「关联 Skill」章节）
+# mimo-v2-5-tts, image-api, mood-sticker
+
+# 3. 配置环境变量
 cp .env.cyber-gf.example .env.cyber-gf
 # 编辑 .env.cyber-gf 填入 API keys
 ```
@@ -50,13 +56,34 @@ cp .env.cyber-gf.example .env.cyber-gf
 
 ## 关联 Skill
 
-本项目依赖以下 3 个 Hermes Agent 内置 Skill：
+本项目依赖以下 3 个 Hermes Agent Skill，需单独安装：
 
-- `mimo-v2-5-tts` — MiMo TTS 语音合成（voice design + clone）
-- `image-api` — gpt-image-2 图片生成与编辑
-- `mood-sticker` — 表情包搜索（tangdouz API）
+### 1. `mimo-v2-5-tts` — MiMo TTS 语音合成
 
-> 这些是 Hermes Agent 内置 Skill，自动可用。无需单独安装，确保 Hermes Agent 已正确配置即可。
+来源：[XiaomiMiMo/MiMo-Skills](https://github.com/XiaomiMiMo/MiMo-Skills)
+
+```bash
+# 方式一：npx（推荐）
+npx skills add XiaomiMiMo/MiMo-Skills --skill mimo-v2-5-tts
+
+# 方式二：手动
+git clone https://github.com/XiaomiMiMo/MiMo-Skills.git ~/.mimo-skills
+ln -s ~/.mimo-skills/skills/mimo-v2-5-tts ~/.hermes/skills/mimo-v2-5-tts
+```
+
+需要 `MIMO_API_KEY` 环境变量（[小米 MiMo 开放平台](https://platform.xiaomimimo.com/)申请）。
+
+### 2. `image-api` — gpt-image-2 图片生成与编辑
+
+自定义 Skill，需手动放入 `~/.hermes/skills/image-api/`。包含 `scripts/image_api.py`，通过 OpenAI 兼容 API 调用 gpt-image-2 模型。
+
+需要 `IMAGE_API_KEY` 和 `IMAGE_API_BASE` 环境变量。
+
+### 3. `mood-sticker` — 表情包搜索
+
+来源：[clawhub.ai/chensanle/sticker](https://clawhub.ai/chensanle/sticker)
+
+Hermes skill bundle 安装，或手动放入 `~/.hermes/skills/sticker/`。使用 tangdouz API，免费无需 API key。
 
 ## 状态系统
 
@@ -118,13 +145,13 @@ cp .env.cyber-gf.example .env.cyber-gf
 
 ## 依赖
 
-| 依赖 | 用途 |
-|------|------|
-| Hermes Agent | 运行环境，工具链 |
-| mimo-v2-5-tts (内置 Skill) | 语音合成（voice design + clone） |
-| image-api (内置 Skill) | 图片生成与编辑（gpt-image-2） |
-| mood-sticker (内置 Skill) | 表情包搜索（tangdouz API，免费） |
-| ffmpeg | 语音格式转码（wav→ogg） |
+| 依赖 | 用途 | 来源 |
+|------|------|------|
+| Hermes Agent | 运行环境，工具链 | [hermes-agent](https://hermes-agent.nousresearch.com) |
+| mimo-v2-5-tts | 语音合成（voice design + clone） | [XiaomiMiMo/MiMo-Skills](https://github.com/XiaomiMiMo/MiMo-Skills) |
+| image-api | 图片生成与编辑（gpt-image-2） | 自定义 Skill（未发布） |
+| mood-sticker | 表情包搜索（tangdouz API，免费） | [clawhub.ai/chensanle/sticker](https://clawhub.ai/chensanle/sticker) |
+| ffmpeg | 语音格式转码（wav→ogg） | 系统包 |
 
 ## License
 
