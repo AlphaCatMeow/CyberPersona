@@ -1,7 +1,7 @@
 ---
 name: cyber-persona
 description: "Run CyberPersona (赛博女友) roleplay mode — quantum-state character generation, Big Five personality, 5-dimension relationship system, stress modulation, enum-based state deltas, three opening strategies, world sync (weather/holidays/time), TTS voice, image, sticker delivery on Telegram."
-version: 9.1.0
+version: 9.1.1
 metadata:
   hermes:
     tags: [cyberpersona, roleplay, tts, telegram, voice, image, gamification, emotion, sticker, quantum-state, big-five]
@@ -353,7 +353,7 @@ python3 ~/.hermes/skills/image-api/scripts/image_api.py \
 cd ~/.hermes/CyberPersona-hermes && node -e "
 const fs = require('fs');
 const payload = JSON.parse(fs.readFileSync('/tmp/cyber-gf-init-payload.json', 'utf8'));
-payload.profile.voiceSamplePath = '/root/.hermes/CyberPersona-hermes/.data/voice-sample.wav';
+payload.profile.voiceSamplePath = '~/.hermes/CyberPersona-hermes/.data/voice-sample.wav';
 fs.writeFileSync('/tmp/cyber-gf-init-payload.json', JSON.stringify(payload, null, 2));
 console.log('voiceSamplePath added');
 "
@@ -483,7 +483,7 @@ Agent calls mimo-tts skill scripts directly. TTS text = `visibleText`:
 
 **日常语音（clone 模式）：**
 ```bash
-source /root/.hermes/.env && export MIMO_API_KEY="***" && export MIMO_BASE_URL="$XIAOMI_BASE_URL"
+source ~/.hermes/.env && export MIMO_API_KEY="***" && export MIMO_BASE_URL="$XIAOMI_BASE_URL"
 python3 ~/.hermes/skills/mimo-v2-5-tts/scripts/mimo_tts_voiceclone.py \
   --voice-file ~/.hermes/CyberPersona-hermes/.data/voice-sample.wav \
   --context "自然语言风格控制" \
@@ -494,7 +494,7 @@ ffmpeg -y -i /tmp/cyber-gf-tts-output.wav -c:a libopus -b:a 32k /tmp/cyber-gf-tt
 
 **唱歌（preset 模式，clone 不支持唱歌）：**
 ```bash
-source /root/.hermes/.env && export MIMO_API_KEY="***" && export MIMO_BASE_URL="$XIAOMI_BASE_URL"
+source ~/.hermes/.env && export MIMO_API_KEY="***" && export MIMO_BASE_URL="$XIAOMI_BASE_URL"
 python3 ~/.hermes/skills/mimo-v2-5-tts/scripts/mimo_tts.py \
   --voice "茉莉" \
   --text "(唱歌)完整歌词内容" \
@@ -554,6 +554,13 @@ When exiting: **remove gateway notification suppression flag**.
 
 **Affection levels:** 陌生(0-100) → 认识(101-300) → 友好(301-500) → 亲密(501-700) → 心动(701-900) → 恋人(901-1000)
 
+**Affection gain:** daily_chat(+5), voice_message(+10), photo_share(+15), deep_conversation(+20), emotional_support(+25), special_event(+30), achievement_unlock(+50)
+
+**Affection deduction (v9.1.1):** Based on `stateDelta` from turn result:
+- `major_decrease` ≥ 2 dimensions → -30 (relationship collapse)
+- `negative` (any decrease) ≥ 3 dimensions → -15 (relationship conflict)
+- `major_decrease` ≥ 1 dimension → -8 (relationship setback)
+
 **Daily tasks:** 早安问候, 晚安问候, 分享心情, 语音聊天, 照片分享, 深入对话
 
 ## Key Pitfalls
@@ -599,7 +606,13 @@ When exiting: **remove gateway notification suppression flag**.
 
 17. **Context compaction can break the runtime loop** — After compaction, re-enter with `开始赛博女友`.
 
-## Character Response Guidelines (v9.1.0)
+18. **L2 factor: N must NOT appear twice** — `baseFactor` already includes neuroticism. The inner formula for neediness/possessiveness must NOT add `n` again, or it creates quadratic amplification (N=90 → factor 1.89 instead of 1.26). This was fixed in v9.1.1.
+
+19. **Gamification: negative deltas must deduct affection** — `recordInteraction` receives `stateDelta` from the turn result. If multiple dimensions show `major_decrease`, affection is deducted (-8 to -30). Without this, affection rises even when the relationship is tanking.
+
+20. **`analysis` is a required turn field** — LLM must write CoT reasoning before choosing enum deltas. `validateTurnOutput` rejects turns missing the `analysis` field.
+
+## Character Response Guidelines (v9.1.1)
 
 When generating TurnResultPayload:
 - **真实感优先于讨好感** — authentic over pleasing

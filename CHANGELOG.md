@@ -1,5 +1,36 @@
 # Changelog
 
+## v9.1.1 (2026-05-01)
+
+### 修复
+
+#### L2 乘数二次叠加（数值爆炸风险）
+- `cyber-gf-state.js`：neediness 和 possessiveness 的 L2 因子计算中，neuroticism (N) 被重复计入 `baseFactor` 和内部公式
+- 修复前：N=90 时 neediness 乘数 = 1.89（二次方放大）
+- 修复后：N=90 时 neediness 乘数 = 1.26（线性，N 仅在 baseFactor 中）
+
+#### CoT 强制校验缺失
+- `cyber-gf-turn.js`：`analysis` 字段未列入必填校验，LLM 可跳过思考链直接输出 delta
+- 修复：`analysis` 加入 `requiredStringFields`，缺失则拒绝 turn 结果
+
+#### 量子态泄漏
+- `cyber-gf-prompts.js`：初始 prompt 的 `revealedMemoryInit` 模板未明确禁止预设事实
+- 修复：JSON 模板加 ⚠️ 注释 + prompt 正文加显式禁令，锁死空数组
+
+#### 好感度与状态脱钩
+- `cyber-gf-gamification.js`：好感度仅按互动类型递增，不考虑 stateDelta 正负
+- 修复：新增负面 delta 扣除逻辑
+  - `major_decrease ≥ 2 维度` → -30（关系崩塌）
+  - `negative ≥ 3 维度` → -15（关系冲突）
+  - `major_decrease ≥ 1 维度` → -8（关系受挫）
+- `cyber-gf-controller.js`：`recordInteraction` 调用传入 `stateDelta`
+
+### 脱敏
+
+- `SKILL.md`：3 处 `/root/` 硬编码路径替换为 `~/` 通用路径
+
+---
+
 ## v9.1.0 (2026-05-01)
 
 ### 新增功能
