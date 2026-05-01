@@ -1,7 +1,7 @@
 ---
 name: cyber-persona
 description: "Run CyberPersona (赛博女友) roleplay mode — quantum-state character generation, Big Five personality, 5-dimension relationship system, stress modulation, enum-based state deltas, three opening strategies, world sync (weather/holidays/time), TTS voice, image, sticker delivery on Telegram."
-version: 9.1.1
+version: 9.2.0
 metadata:
   hermes:
     tags: [cyberpersona, roleplay, tts, telegram, voice, image, gamification, emotion, sticker, quantum-state, big-five]
@@ -612,7 +612,15 @@ When exiting: **remove gateway notification suppression flag**.
 
 20. **`analysis` is a required turn field** — LLM must write CoT reasoning before choosing enum deltas. `validateTurnOutput` rejects turns missing the `analysis` field.
 
-## Character Response Guidelines (v9.1.1)
+21. **Quantum state: code-layer enforcement** — `validateInitialProfile` rejects non-empty `revealedFacts`/`emotionalMemories`/`importantEvents`. Additionally, `applyInitialStatePayload` force-clears these arrays as a double safety net. LLM cannot leak facts into initial state.
+
+22. **Timezone: always use Asia/Shanghai** — `getTimeOfDay()` uses `toLocaleString("en-US", {timeZone: "Asia/Shanghai"})` to ensure correct time perception regardless of server location.
+
+23. **recentContext: 10 messages, not 3** — `getRecentContext(limit=10)` and `slice(-10)` give the LLM 5 full turns of context.恋爱模拟需要上下文拉扯，3 条太短会导致"鱼的记忆"。
+
+24. **State version migration** — `createEmptyState()` has `version: 2`. `repairState()` auto-migrates v1→v2: removes `voiceTendency`, renames `intimacy→closeness`/`attachment→neediness`/`jealousy→possessiveness`, ensures `personalitySettings` + `stress` exist.
+
+## Character Response Guidelines (v9.2.0)
 
 When generating TurnResultPayload:
 - **真实感优先于讨好感** — authentic over pleasing

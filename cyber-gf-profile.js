@@ -77,6 +77,18 @@ function validateInitialProfile(output) {
     return { ok: false, error: 'openingMessage is required' };
   }
 
+  // Quantum State Enforcement: 初始记忆必须为空，留给后续对话坍缩
+  const quantumFields = [
+    { key: 'revealedFacts', label: '揭示的事实' },
+    { key: 'emotionalMemories', label: '情绪记忆' },
+    { key: 'importantEvents', label: '重要事件' },
+  ];
+  for (const { key, label } of quantumFields) {
+    if (revealedMemoryInit[key] && revealedMemoryInit[key].length > 0) {
+      return { ok: false, error: `Quantum State Violation: revealedMemoryInit.${key} 必须为空数组！${label}在初始状态下禁止预设，必须在后续对话中自然坍缩。` };
+    }
+  }
+
   return { ok: true, value: output };
 }
 

@@ -1,5 +1,37 @@
 # Changelog
 
+## v9.2.0 (2026-05-01)
+
+### 强化
+
+#### 量子态代码层硬约束
+- `cyber-gf-profile.js`：`validateInitialProfile` 新增量子态强制校验
+  - `revealedFacts` / `emotionalMemories` / `importantEvents` 非空 → 拒绝整个 payload
+  - 错误信息：`Quantum State Violation: 必须为空数组，留给后续对话坍缩`
+- `cyber-gf-controller.js`：`applyInitialStatePayload` 新增双重保险
+  - validator 通过后，代码层仍强制清空三个记忆数组
+  - 物理隔离 LLM "丰满人设"冲动导致的量子态泄漏
+
+#### 时区修复
+- `cyber-gf-state.js`：`getTimeOfDay()` 强制使用 `Asia/Shanghai` 时区
+  - 修复服务器在海外时角色时间感知错误的问题
+  - 确保"凌晨3点 → 你怎么还不睡"的自然反应
+
+#### 上下文窗口扩展
+- `cyber-gf-controller.js`：`recentContext` 从 3 条扩展到 10 条
+  - `getRecentContext(limit=10)` + `slice(-10)`
+  - 修复"鱼的记忆"问题：角色现在能记住 5 轮前自己抛的梗
+
+#### 状态版本迁移
+- `cyber-gf-state.js`：`createEmptyState` 版本号 1→2
+- `cyber-gf-state.js`：`repairState` 新增 v1→v2 自动迁移逻辑
+  - 移除废弃的 `voiceTendency`
+  - 重命名 `intimacy→closeness`、`attachment→neediness`、`jealousy→possessiveness`
+  - 确保 `personalitySettings` 和 `stress` 字段存在
+  - 未来版本变更时可复用此迁移框架
+
+---
+
 ## v9.1.1 (2026-05-01)
 
 ### 修复

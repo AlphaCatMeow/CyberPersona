@@ -6,7 +6,8 @@ function nowIso() {
 }
 
 function getTimeOfDay() {
-  const hour = new Date().getHours();
+  // 强制使用中国时区，避免服务器时区差异导致时间感知错误
+  const hour = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Shanghai"})).getHours();
   let period, label;
   if (hour >= 6 && hour < 9)       { period = 'morning_early'; label = '早晨'; }
   else if (hour >= 9 && hour < 12) { period = 'morning';       label = '上午'; }
@@ -24,7 +25,7 @@ function getStatePath() {
 
 function createEmptyState() {
   return {
-    version: 1,
+    version: 2,
     mode: {
       enabled: false,
       type: 'cyber_girlfriend'
@@ -144,6 +145,42 @@ function createEmptyState() {
 
 function repairState(state) {
   const base = createEmptyState();
+
+  // ── Version Migration ──────────────────────────────────────
+  if (!state) return base;
+
+  // v1 → v2: 6 dim L3 → 5 dim, remove voiceTendency, add personalitySettings + stress
+  if (!state.version || state.version < 2) {
+    // Remove deprecated voiceTendency from dynamicState
+    if (state.dynamicState && 'voiceTendency' in state.dynamicState) {
+      delete state.dynamicState.voiceTendency;
+    }
+    // Ensure personalitySettings exists
+    if (!state.personalitySettings) {
+      state.personalitySettings = {};
+    }
+    // Ensure stress exists
+    if (typeof state.stress !== 'number') {
+      state.stress = 0;
+    }
+    // Migrate old intimacy → closeness, attachment → neediness, jealousy → possessiveness
+    if (state.dynamicState) {
+      if ('intimacy' in state.dynamicState && !('closeness' in state.dynamicState)) {
+        state.dynamicState.closeness = state.dynamicState.intimacy;
+        delete state.dynamicState.intimacy;
+      }
+      if ('attachment' in state.dynamicState && !('neediness' in state.dynamicState)) {
+        state.dynamicState.neediness = state.dynamicState.attachment;
+        delete state.dynamicState.attachment;
+      }
+      if ('jealousy' in state.dynamicState && !('possessiveness' in state.dynamicState)) {
+        state.dynamicState.possessiveness = state.dynamicState.jealousy;
+        delete state.dynamicState.jealousy;
+      }
+    }
+    state.version = 2;
+  }
+
   const repaired = {
     ...base,
     ...state,

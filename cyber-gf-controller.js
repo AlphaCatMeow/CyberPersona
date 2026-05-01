@@ -50,7 +50,7 @@ function appendHistory(role, text) {
   saveHistory(history);
 }
 
-function getRecentContext(limit = 4) {
+function getRecentContext(limit = 10) {
   return loadHistory().slice(-limit).map(({ role, text }) => ({ role, text }));
 }
 
@@ -396,7 +396,7 @@ function buildTurnContextPayload(userMessage) {
     shortTermState: state.shortTermState,
     revealedMemory: state.revealedMemory,
     worldContext: getWorldContext(state),
-    recentContext: (recentContext || []).slice(-3),
+    recentContext: (recentContext || []).slice(-10),
     userMessage
   };
 }
@@ -557,6 +557,15 @@ function applyInitialStatePayload(initialPayload) {
   if (!validated.ok) {
     throw new Error(validated.error);
   }
+
+  // 量子态双重保险：即使 validator 漏过，代码层也强制清空记忆
+  const rmi = validated.value.revealedMemoryInit;
+  if (rmi) {
+    rmi.revealedFacts = [];
+    rmi.emotionalMemories = [];
+    rmi.importantEvents = [];
+  }
+
   let state = buildInitialState(validated.value);
   state = saveState(state);
   const elapsed = Date.now() - start;
