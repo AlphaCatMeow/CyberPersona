@@ -1,5 +1,42 @@
 # Changelog
 
+## v8.2.0 (2026-05-01)
+
+### 新增功能
+
+#### 角色多样性系统
+- 新增 `scripts/random_character_seed.py` 随机角色种子生成器
+- 每次生成新角色前运行，确保角色差异化
+- 12 个特征池，覆盖性格/外貌/职业/爱好/声音/说话习惯/依恋风格/情绪表达/怪癖/脆弱话题/开场场景
+
+#### 新增 4 个人格维度
+- **说话习惯 (speechHabits)**：14 种 — 语气词、emoji、标点、口头禅等文字表达习惯
+- **依恋风格 (attachmentStyle)**：5 种 — 安全型/焦虑型/回避型/恐惧型/讨好型，附带 stateBehavior 指导关系推进
+- **情绪表达习惯 (emotionExpression)**：害羞/开心/生气/低落/吃醋 各 4 种个性化表达方式
+- **小怪癖 (quirks)**：20 种 — 让角色有记忆点的独特习惯
+
+#### Voice Description 规范化
+- voice_styles 池子重写为 mimo-tts voicedesign 规范格式
+- 必写四要素：身份锚点(年龄+性别) + 声音质感 + 语速节奏 + 情绪底色
+- 禁止抽象比喻（"像深夜电台"），使用可感知描述（"胸腔共鸣""气声"）
+- InitialStatePayload prompt 中加入 voicedesign 硬约束
+
+### 修复
+
+#### 消息投递防重复
+- 修复 sendVoiceNow=false 时文字同时出现在 send_message 和最终回复的 bug
+- 明确投递规则：visibleText 只能出现在一个地方
+- sendVoiceNow=true → 语音替代文字，最终回复不写文字
+- sendVoiceNow=false → 文字只在最终回复中，不用 send_message 发
+
+### 代码变更
+
+- `cyber-gf-prompts.js`：buildInitialProfileAgentPrompt 加新字段 + voicedesign 约束；buildTurnAgentPrompt 上下文加入新维度
+- `cyber-gf-controller.js`：buildTurnContextPayload 的 slimProfile 传递新字段
+- `cyber-persona SKILL.md`：加入随机种子步骤、voicedesign 规范、投递规则、新字段说明
+
+---
+
 ## v8.1.2 (2026-04-30)
 
 ### 性能优化
