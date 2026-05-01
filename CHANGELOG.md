@@ -1,5 +1,18 @@
 # Changelog
 
+## v8.3.0 (2026-05-01)
+
+### 依赖更新
+
+#### image-api 独立化
+- `image-api` 已独立为通用开源项目：[harrylarryxyz/image-api](https://github.com/harrylarryxyz/image-api)
+- 支持任意 OpenAI 兼容图片生成 provider（不再绑定特定服务）
+- 新增功能：`url` 响应格式支持、内容类型检查（HTML 错误页面检测）、主备双端点自动切换
+- 零依赖（Python stdlib + curl）
+- README.md、SKILL.md 更新安装指南和依赖链接
+
+---
+
 ## v8.2.0 (2026-05-01)
 
 ### 新增功能
