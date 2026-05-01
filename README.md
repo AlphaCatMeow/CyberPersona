@@ -117,16 +117,7 @@ ln -s ~/.mimo-skills/skills/mimo-v2-5-tts ~/.hermes/skills/mimo-v2-5-tts
 来源：[harrylarryxyz/image-api](https://github.com/harrylarryxyz/image-api)
 
 ```bash
-# 方式一：克隆并安装
-git clone https://github.com/harrylarryxyz/image-api.git /tmp/image-api
-cp -r /tmp/image-api/scripts ~/.hermes/skills/image-api/
-cp -r /tmp/image-api/references ~/.hermes/skills/image-api/
-cp /tmp/image-api/SKILL.md ~/.hermes/skills/image-api/
-
-# 方式二：直接复制（如果已下载）
-cp -r <path-to-image-api>/scripts ~/.hermes/skills/image-api/
-cp -r <path-to-image-api>/references ~/.hermes/skills/image-api/
-cp <path-to-image-api>/SKILL.md ~/.hermes/skills/image-api/
+git clone https://github.com/harrylarryxyz/image-api.git ~/.hermes/skills/image-api
 ```
 
 需要 `IMAGE_API_KEY` 和 `IMAGE_API_BASE` 环境变量。支持任意 OpenAI 兼容的图片生成服务。
