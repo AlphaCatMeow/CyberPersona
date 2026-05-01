@@ -278,19 +278,25 @@ function getStatePayload() {
 function buildTurnContextPayload(userMessage) {
   const { state, recentContext } = getStatePayload();
   if (!state) return null;
+  // 精简 profile：只保留 turn 需要的字段
+  const p = state.profile || {};
+  const slimProfile = {
+    coreSummary: p.coreSummary,
+    appearance: p.appearance,
+    speechHabits: p.speechHabits,
+    attachmentStyle: p.attachmentStyle,
+    emotionExpression: p.emotionExpression,
+    quirks: p.quirks,
+    emotionalProfile: p.emotionalProfile || {},
+    sessionSummaries: (p.sessionSummaries || []).slice(-3)
+  };
   return {
-    mode: state.mode,
-    profile: state.profile,
+    profile: slimProfile,
     dynamicState: state.dynamicState,
     shortTermState: state.shortTermState,
     revealedMemory: state.revealedMemory,
-    recentContext,
-    userMessage,
-    emotionHistory: state.shortTermState.emotionHistory || [],
-    moodFactors: state.shortTermState.moodFactors || {},
-    emotionalMemories: state.revealedMemory.emotionalMemories || [],
-    emotionalProfile: state.profile.emotionalProfile || {},
-    sessionSummaries: state.profile.sessionSummaries || []
+    recentContext: (recentContext || []).slice(-3),
+    userMessage
   };
 }
 
