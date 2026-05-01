@@ -23,7 +23,7 @@ const ACHIEVEMENTS = {
     description: '完成10次对话',
     icon: '🗣️',
     condition: (state) => (state.meta?.turnCount || 0) >= 10,
-    reward: { intimacy: 5 },
+    reward: { closeness: 5 },
     rarity: 'common'
   },
   hundred_conversations: {
@@ -32,7 +32,7 @@ const ACHIEVEMENTS = {
     description: '完成100次对话',
     icon: '💝',
     condition: (state) => (state.meta?.turnCount || 0) >= 100,
-    reward: { trust: 5, intimacy: 5 },
+    reward: { trust: 5, closeness: 5 },
     rarity: 'rare'
   },
   
@@ -43,7 +43,7 @@ const ACHIEVEMENTS = {
     description: '第一次发送语音',
     icon: '🎤',
     condition: (state) => state.shortTermState?.recentVoicePattern !== 'none',
-    reward: { voiceTendency: 5 },
+    reward: { closeness: 5 },
     rarity: 'common'
   },
   voice_master: {
@@ -52,7 +52,7 @@ const ACHIEVEMENTS = {
     description: '发送10次语音',
     icon: '🎵',
     condition: (state) => (state.runtimeCache?.voiceCount || 0) >= 10,
-    reward: { voiceTendency: 5 },
+    reward: { closeness: 5 },
     rarity: 'uncommon'
   },
   
@@ -63,7 +63,7 @@ const ACHIEVEMENTS = {
     description: '收到第一张自拍',
     icon: '📸',
     condition: (state) => state.shortTermState?.recentImagePattern === 'selfie',
-    reward: { attachment: 5 },
+    reward: { neediness: 5 },
     rarity: 'common'
   },
   photo_collector: {
@@ -72,7 +72,7 @@ const ACHIEVEMENTS = {
     description: '收到10张照片',
     icon: '🖼️',
     condition: (state) => (state.runtimeCache?.imageCount || 0) >= 10,
-    reward: { attachment: 5 },
+    reward: { neediness: 5 },
     rarity: 'uncommon'
   },
   
@@ -82,8 +82,8 @@ const ACHIEVEMENTS = {
     name: '心动瞬间',
     description: '第一次心跳加速',
     icon: '💓',
-    condition: (state) => state.dynamicState?.intimacy >= 80,
-    reward: { intimacy: 5 },
+    condition: (state) => state.dynamicState?.closeness >= 80,
+    reward: { closeness: 5 },
     rarity: 'uncommon'
   },
   trust_fall: {
@@ -102,13 +102,13 @@ const ACHIEVEMENTS = {
     icon: '💑',
     condition: (state) => {
       const ds = state.dynamicState;
-      return ds?.intimacy >= 80 &&
+      return ds?.closeness >= 80 &&
              ds?.trust >= 80 &&
              ds?.security >= 80 &&
-             ds?.attachment >= 80 &&
-             ds?.voiceTendency >= 80;
+             ds?.neediness >= 80 &&
+             ds?.possessiveness >= 80;
     },
-    reward: { trust: 5, security: 5, intimacy: 5, attachment: 5, jealousy: 5, voiceTendency: 5 },
+    reward: { trust: 5, security: 5, closeness: 5, neediness: 5, possessiveness: 5 },
     rarity: 'legendary'
   },
   
@@ -124,7 +124,7 @@ const ACHIEVEMENTS = {
       const days = (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24);
       return days >= 7;
     },
-    reward: { intimacy: 5 },
+    reward: { closeness: 5 },
     rarity: 'common'
   },
   one_month: {
@@ -138,7 +138,7 @@ const ACHIEVEMENTS = {
       const days = (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24);
       return days >= 30;
     },
-    reward: { trust: 5, intimacy: 5 },
+    reward: { trust: 5, closeness: 5 },
     rarity: 'uncommon'
   },
   one_year: {
@@ -152,7 +152,7 @@ const ACHIEVEMENTS = {
       const days = (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24);
       return days >= 365;
     },
-    reward: { trust: 5, security: 5, intimacy: 5, attachment: 5, jealousy: 5, voiceTendency: 5 },
+    reward: { trust: 5, security: 5, closeness: 5, neediness: 5, possessiveness: 5 },
     rarity: 'epic'
   },
   
@@ -163,7 +163,7 @@ const ACHIEVEMENTS = {
     description: '在凌晨2-5点聊天',
     icon: '🦉',
     condition: (state) => state.runtimeCache?.lateNightChat === true,
-    reward: { intimacy: 5 },
+    reward: { closeness: 5 },
     rarity: 'uncommon'
   },
   early_bird: {
@@ -172,7 +172,7 @@ const ACHIEVEMENTS = {
     description: '在早上6-7点聊天',
     icon: '🐦',
     condition: (state) => state.runtimeCache?.earlyMorningChat === true,
-    reward: { intimacy: 5 },
+    reward: { closeness: 5 },
     rarity: 'uncommon'
   },
   all_night: {
@@ -181,7 +181,7 @@ const ACHIEVEMENTS = {
     description: '连续聊天超过4小时',
     icon: '🌙',
     condition: (state) => state.runtimeCache?.longChatSession === true,
-    reward: { trust: 5, intimacy: 5 },
+    reward: { trust: 5, closeness: 5 },
     rarity: 'rare'
   },
   
@@ -197,7 +197,7 @@ const ACHIEVEMENTS = {
       if (state.revealedMemory?.nicknameForSelf) nicknames.add(state.revealedMemory.nicknameForSelf);
       return nicknames.size >= 3;
     },
-    reward: { attachment: 5 },
+    reward: { neediness: 5 },
     rarity: 'uncommon'
   },
   memory_keeper: {

@@ -65,10 +65,10 @@ function formatStatus(state) {
     `关系摘要: ${state.revealedMemory.lastSummary || '暂无'}`,
     dimLine('信任感', state.dynamicState.trust),
     dimLine('安全感', state.dynamicState.security),
-    dimLine('亲密感', state.dynamicState.intimacy),
-    dimLine('依恋度', state.dynamicState.attachment),
-    dimLine('占有欲', state.dynamicState.jealousy),
-    dimLine('语音倾向度', state.dynamicState.voiceTendency),
+    dimLine('亲密度', state.dynamicState.closeness),
+    dimLine('需要感', state.dynamicState.neediness),
+    dimLine('独占性', state.dynamicState.possessiveness),
+    dimLine('压力值', state.stress ?? 20),
     `最近未解情绪: ${state.shortTermState.unresolvedEmotion}`,
     '========================'
   ].join('\n');
@@ -222,9 +222,13 @@ function buildUnifiedDelivery(turnOutput, options = {}) {
 }
 
 function buildStartDelivery(openingMessage) {
+  // 策略 3（观测者效应）：openingMessage 为空，显示等待提示
+  const text = openingMessage && openingMessage.trim()
+    ? openingMessage
+    : '她正在线上...';
   return {
     mode: 'text_reply',
-    text: openingMessage,
+    text,
     sendVoiceNow: false,
     sendImageNow: false,
     voicePayload: null,
@@ -275,6 +279,103 @@ function getStatePayload() {
   };
 }
 
+// ── World Context (世界观同步) ──────────────────────────────────────
+const WORLD_CACHE_PATH = require('path').join(__dirname, '.data', 'world-cache.json');
+const HOLIDAYS_PATH = require('path').join(__dirname, '.data', 'holidays.json');
+const WEATHER_CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+
+function getWeatherCache() {
+  try {
+    if (!fs.existsSync(WORLD_CACHE_PATH)) return null;
+    const data = JSON.parse(fs.readFileSync(WORLD_CACHE_PATH, 'utf8'));
+    if (Date.now() - (data._timestamp || 0) > WEATHER_CACHE_TTL) return null; // expired
+    return data;
+  } catch { return null; }
+}
+
+function saveWeatherCache(data) {
+  try {
+    data._timestamp = Date.now();
+    fs.writeFileSync(WORLD_CACHE_PATH, JSON.stringify(data, null, 2));
+  } catch (err) {
+    console.error('[world-sync] cache save error:', err.message);
+  }
+}
+
+function fetchWeather(city) {
+  try {
+    const { execSync } = require('child_process');
+    const raw = execSync(`curl -s -m 5 "https://wttr.in/${encodeURIComponent(city)}?format=j1"`, { encoding: 'utf8' });
+    const data = JSON.parse(raw);
+    const cur = data.current_condition?.[0];
+    if (!cur) return null;
+    const temp = cur.temp_C;
+    const desc = cur.lang_zh?.[0]?.value || cur.weatherDesc?.[0]?.value || '';
+    const feelsLike = cur.FeelsLikeC;
+    const humidity = cur.humidity;
+    return {
+      city,
+      temp: `${temp}°C`,
+      desc,
+      feelsLike: `${feelsLike}°C`,
+      humidity: `${humidity}%`,
+      summary: `${temp}°C ${desc}`
+    };
+  } catch { return null; }
+}
+
+function checkHolidays() {
+  try {
+    if (!fs.existsSync(HOLIDAYS_PATH)) return { today: null, upcoming: null };
+    const data = JSON.parse(fs.readFileSync(HOLIDAYS_PATH, 'utf8'));
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const day = now.getDate();
+    const allHolidays = [...(data.fixed || []), ...(data.lunar_2026 || [])];
+    let today = null;
+    let upcoming = null;
+    let minDaysAhead = Infinity;
+    for (const h of allHolidays) {
+      if (h.month === month && h.day === day) {
+        today = h.name;
+        break;
+      }
+      // Check if within "days_before" window
+      const holidayDate = new Date(now.getFullYear(), h.month - 1, h.day);
+      const diffMs = holidayDate.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      if (diffDays > 0 && diffDays <= (h.days_before || 0) && diffDays < minDaysAhead) {
+        minDaysAhead = diffDays;
+        upcoming = diffDays === 1 ? `明天是${h.name}` : `还有${diffDays}天${h.name}`;
+      }
+    }
+    return { today, upcoming };
+  } catch { return { today: null, upcoming: null }; }
+}
+
+function getWorldContext(state) {
+  // 量子态：locations.current 为 null 时不查天气（位置尚未坍缩）
+  const currentCity = state?.revealedMemory?.locations?.current;
+  let weather = null;
+  if (currentCity) {
+    // 优先读缓存
+    const cached = getWeatherCache();
+    if (cached && cached.city === currentCity) {
+      weather = cached;
+    } else {
+      weather = fetchWeather(currentCity);
+      if (weather) saveWeatherCache(weather);
+    }
+  }
+  const holidays = checkHolidays();
+  const result = {};
+  if (weather) result.weather = weather.summary;
+  if (holidays.today) result.holiday = holidays.today;
+  if (holidays.upcoming) result.upcomingHoliday = holidays.upcoming;
+  // 如果没有任何世界信息，返回 null（不注入）
+  return Object.keys(result).length > 0 ? result : null;
+}
+
 function buildTurnContextPayload(userMessage) {
   const { state, recentContext } = getStatePayload();
   if (!state) return null;
@@ -284,8 +385,7 @@ function buildTurnContextPayload(userMessage) {
     coreSummary: p.coreSummary,
     appearance: p.appearance,
     speechHabits: p.speechHabits,
-    attachmentStyle: p.attachmentStyle,
-    emotionExpression: p.emotionExpression,
+    personalitySettings: state.personalitySettings || {},
     quirks: p.quirks,
     emotionalProfile: p.emotionalProfile || {},
     sessionSummaries: (p.sessionSummaries || []).slice(-3)
@@ -295,6 +395,7 @@ function buildTurnContextPayload(userMessage) {
     dynamicState: state.dynamicState,
     shortTermState: state.shortTermState,
     revealedMemory: state.revealedMemory,
+    worldContext: getWorldContext(state),
     recentContext: (recentContext || []).slice(-3),
     userMessage
   };

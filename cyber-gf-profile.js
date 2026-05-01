@@ -5,23 +5,24 @@ const DIMENSION_MIN = 0;
 const DIMENSION_MAX = 100;
 
 // Each array: [ideal, min-acceptable, max-acceptable]
+// L3 关系数值（新 5 维）
 const STARTING_RANGES = {
-  trust:          [30, 20, 40],
-  security:       [30, 20, 40],
-  intimacy:       [20, 10, 30],
-  attachment:     [20, 10, 30],
-  jealousy:       [10, 5, 20],
-  voiceTendency:  [10, 5, 20]
+  trust:          [30, 5, 70],
+  security:       [30, 5, 70],
+  closeness:      [15, 0, 50],
+  neediness:      [15, 0, 50],
+  possessiveness: [10, 0, 50]
 };
 
 const FALLBACK_DYNAMIC_STATE_INIT = {
   trust: 30,
   security: 30,
-  intimacy: 20,
-  attachment: 20,
-  jealousy: 10,
-  voiceTendency: 10
+  closeness: 15,
+  neediness: 15,
+  possessiveness: 10
 };
+
+const FALLBACK_STRESS = 20;
 
 const MINOR_MARGIN = 5;
 
@@ -43,6 +44,17 @@ function validateInitialProfile(output) {
   for (const key of requiredProfileKeys) {
     if (typeof profile[key] !== 'string' || !profile[key].trim()) {
       return { ok: false, error: `Missing profile field: ${key}` };
+    }
+  }
+
+  // Validate personalitySettings (L2)
+  const ps = output.personalitySettings;
+  if (ps) {
+    const l2Keys = ['neuroticism', 'agreeableness', 'openness', 'conscientiousness', 'extraversion'];
+    for (const key of l2Keys) {
+      if (ps[key] !== undefined && (typeof ps[key] !== 'number' || !Number.isInteger(ps[key]) || ps[key] < 0 || ps[key] > 100)) {
+        return { ok: false, error: `personalitySettings.${key} must be integer 0-100` };
+      }
     }
   }
 
@@ -81,9 +93,9 @@ function classifyInitialDynamicState(dynamicStateInit) {
       return { status: 'severe', reason: `Invalid integer initial dynamic state for ${key}` };
     }
     const [ideal, minAccept, maxAccept] = range;
-    if (value === ideal) continue; // ideal value
+    if (value === ideal) continue;
     if (value >= minAccept && value <= maxAccept) {
-      minor = true; // acceptable but not ideal
+      minor = true;
     } else {
       return { status: 'severe', reason: `Initial dynamic state severely out of range for ${key}` };
     }
@@ -96,7 +108,8 @@ function classifyInitialDynamicState(dynamicStateInit) {
 function normalizeInitialDynamicState(dynamicStateInit) {
   const next = { ...dynamicStateInit };
   for (const [key, range] of Object.entries(STARTING_RANGES)) {
-    next[key] = range[0]; // normalize to ideal starting integer value
+    const [, minAccept, maxAccept] = range;
+    next[key] = clampToRange(next[key], minAccept, maxAccept);
   }
   return next;
 }
@@ -177,10 +190,15 @@ function buildInitialState(initialProfileOutput) {
       ...base.profile,
       ...initialProfileOutput.profile
     },
+    personalitySettings: {
+      ...base.personalitySettings,
+      ...(initialProfileOutput.personalitySettings || {})
+    },
     dynamicState: {
       ...base.dynamicState,
       ...initialProfileOutput.dynamicStateInit
     },
+    stress: initialProfileOutput.stressInit ?? FALLBACK_STRESS,
     shortTermState: {
       ...base.shortTermState,
       ...initialProfileOutput.shortTermStateInit
@@ -207,5 +225,6 @@ module.exports = {
   resolveInitialProfilePayload,
   STARTING_RANGES,
   FALLBACK_DYNAMIC_STATE_INIT,
+  FALLBACK_STRESS,
   buildInitialState
 };

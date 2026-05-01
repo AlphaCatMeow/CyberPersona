@@ -1,5 +1,133 @@
 # Changelog
 
+## v9.1.0 (2026-05-01)
+
+### 新增功能
+
+#### 三种开场策略
+- **策略1 纯情绪开场（emotion）**：角色碎碎念，不坍缩任何位置，用户自由接话
+- **策略2 薛定谔提问（schrodinger）**：角色问「你在干嘛？」触发用户回答坍缩
+- **策略3 观测者模式（observer）**：不发开场白，显示"她正在在线..."，用户先说话坍缩
+- 随机选择，不和性格挂钩（防止用户反推性格）
+- 策略 1 和 2：LLM 只拿到 L2+Stress，prompt 禁止提及地点/天气/动作
+- 种子脚本新增 `openingStrategy` 字段
+
+#### revealedFacts 类型分类
+- `setting` 类型：不可变（地点、职业、外貌特征），一旦坍缩不覆盖
+- `experience` 类型：可修订（经历、感受），保留修改历史（lastRevision）
+- LLM 上下文注入格式区分：setting 无标记，experience 显示 `[可修订]`
+
+### 代码变更
+
+- `scripts/random_character_seed.py`：删除 opening_scenes 池，新增 openingStrategy 随机选择
+- `cyber-gf-prompts.js`：buildInitialAgentPrompt 支持三种策略参数，纯情绪策略禁止坍缩
+- `cyber-gf-controller.js`：开场逻辑根据策略分支，observer 策略跳过 LLM 调用
+- `cyber-gf-state.js`：mergeRevealedFacts 支持 type 分类 + setting 不可变 + experience 修订历史
+
+---
+
+## v9.0.0 (2026-05-01)
+
+### 重大变更
+
+#### 大五人格替代自定义 L2 参数
+- 删除：extraversion / agreeableness / openness / expressiveness / adventurousness / emotionalStability / empathy
+- 新增：neuroticism / agreeableness / openness / conscientiousness / extraversion
+- 心理学理论支撑，不再是自创维度
+- 依恋风格（attachmentStyle）不再作为独立 L2，其行为模式被 N（焦虑）和低 A（回避）吸收
+
+#### 5 维度 L3 替代旧 6 维度
+| 旧维度 | 新维度 | 变化 |
+|--------|--------|------|
+| trust | trust | 保留 |
+| security | security | 保留 |
+| intimacy | closeness | 重命名 |
+| attachment | neediness | 重命名，更准确 |
+| jealousy | possessiveness | 重命名 |
+| voiceTendency | — | 删除，功能并入 closeness |
+
+#### 三阶段调制系统
+- `effective_Δ = raw_Δ_enum × l2_factor × mood_factor`
+- L2 调制：N 影响所有幅度+压力敏感度，A 影响信任+冲突，O 影响新奇事件，C 影响承诺事件，E 仅影响行为
+- Mood 调制：正面 Δ ×(1-0.5×stress/100)，负面 Δ ×(1+0.5×stress/100)
+
+#### 枚举化 delta（防 LLM 数值幻觉）
+- `major_decrease(-10)` / `minor_decrease(-3)` / `neutral(0)` / `minor_increase(+3)` / `major_increase(+10)`
+- LLM 必须先写 CoT 分析，再选枚举值
+- 代码层做 ENUM_TO_INT 转换 + 算术
+
+#### 压力系统
+- 独立短期状态，不属于 L3（关系维度）
+- 范围 0-100，自然衰减：base 3 + N 影响 + C 影响
+- 通过 mood_factor 影响所有 L3 变化
+
+#### State Narrative Translation
+- buildStateNarrative()：数字 → 自然语言（"信任感：82/100 — 她很信赖你"）
+- dimToText / stressToText / l2ToText：每个维度/压力/L2 都有自然语言映射
+- thresholdToText：阈值触发的自然语言描述
+
+### 代码变更
+
+- `cyber-gf-state.js`：dynamicState 重构，ENUM_TO_INT，getL2Factor，getMoodFactor，decayStress
+- `cyber-gf-prompts.js`：全面重写，buildStateNarrative，枚举 delta + CoT
+- `cyber-gf-turn.js`：stateDelta 改为枚举验证，新增 stressDelta
+- `cyber-gf-profile.js`：STARTING_RANGES 更新，validateInitialProfile 支持 personalitySettings
+- `cyber-gf-controller.js`：slimProfile 更新，debug 显示更新
+- `cyber-gf-gamification.js`：维度名称更新
+- `scripts/random_character_seed.py`：Big Five archetypes，删除 vulnerabilities/emotionExpressions/openingScenes 池
+
+---
+
+## v8.5.0 (2026-05-01)
+
+### 量子态清理
+
+#### 删除所有预设行为模板
+- 删除 `vulnerabilities` 池：脆弱话题不再预设，由 LLM 在 trust>60 时自然生成
+- 删除 `emotionExpressions` 池：情绪表达方式不再预设，初始化为空，首次情感体验时坍缩
+- 删除 `stateBehavior` 矩阵：行为由 LLM 根据上下文推理
+- 删除 `temporalMoodTemplates`：时间情绪不再预设
+- 删除 `openingScenes` 池（在 v9.1.0 中完成）
+
+#### 量子态原则
+- 种子只给「轴」不给「点」：职业=nurse → 方向，不是描述
+- 没提及 = 无限可能，提及 = 立刻坍缩
+- 角色通过对话「长出」自己，不被种子定义
+
+---
+
+## v8.4.0 (2026-05-01)
+
+### 世界观同步
+
+#### 天气感知
+- 基于 wttr.in curl 查询，15 分钟缓存
+- 依赖 `revealedMemory.locations.current`（量子态）
+- 位置未坍缩时：不注入天气，LLM 不编造
+- 位置坍缩后：根据实际天气注入上下文
+
+#### 节日感知
+- `.data/holidays.json`：16 个固定节日 + 4 个农历节日
+- 特殊日期自动注入上下文
+
+#### 时间感知增强
+- 7 个时间段：凌晨(0-5) / 早晨(6-8) / 上午(9-11) / 中午(12-13) / 下午(14-17) / 傍晚(18-19) / 晚上(20-23)
+- 精确小时注入
+- 角色自然感知时间（凌晨3点：「你怎么还不睡？」）
+
+#### 位置量子态
+- Profile 不预设位置（量子态原则）
+- 首次提到城市 → 坍缩到 `revealedMemory.locations.current`
+- 旅行 → `locations.current` 暂时改变，返回后恢复
+- 返回由 LLM 自然决定，不用定时器
+
+### 新增文件
+
+- `.data/holidays.json` — 节日数据
+- `.data/world-cache.json` — 天气缓存
+
+---
+
 ## v8.3.0 (2026-05-01)
 
 ### 依赖更新
@@ -10,6 +138,12 @@
 - 新增功能：`url` 响应格式支持、内容类型检查（HTML 错误页面检测）、主备双端点自动切换
 - 零依赖（Python stdlib + curl）
 - README.md、SKILL.md 更新安装指南和依赖链接
+
+### 游戏化系统升级
+
+- 情绪深度集成：维度变化触发成就检查
+- 情绪记忆里程碑：首次特定情绪触发收集成就
+- 关系阶段解锁：冰点→日常→亲密→深度，不同阶段解锁不同内容
 
 ---
 

@@ -1,3 +1,6 @@
+const VALID_ENUMS = ['major_decrease', 'minor_decrease', 'neutral', 'minor_increase', 'major_increase'];
+const L3_KEYS = ['trust', 'security', 'closeness', 'neediness', 'possessiveness'];
+
 function validateTurnOutput(output) {
   if (!output || typeof output !== 'object') {
     return { ok: false, error: 'Turn output is not an object' };
@@ -16,7 +19,6 @@ function validateTurnOutput(output) {
   if (output.sendImageNow !== undefined && typeof output.sendImageNow !== 'boolean') {
     return { ok: false, error: 'sendImageNow must be boolean' };
   }
-  // Default sendImageNow to false if not present
   if (output.sendImageNow === undefined) {
     output.sendImageNow = false;
   }
@@ -45,22 +47,42 @@ function validateTurnOutput(output) {
   }
   if (output.gifKeyword === undefined) output.gifKeyword = '';
 
-  const stateDeltaKeys = ['trust', 'security', 'intimacy', 'attachment', 'jealousy', 'voiceTendency'];
-  const delta = output.stateDelta || {};
-  for (const key of stateDeltaKeys) {
-    if (delta[key] !== undefined && !Number.isInteger(delta[key])) {
-      return { ok: false, error: `stateDelta.${key} must be an integer` };
+  // stateDelta: enum values for each L3 dimension
+  output.stateDelta = output.stateDelta || {};
+  for (const key of L3_KEYS) {
+    const val = output.stateDelta[key];
+    if (val === undefined || val === null) {
+      output.stateDelta[key] = 'neutral';
+    } else if (typeof val === 'string') {
+      if (!VALID_ENUMS.includes(val)) {
+        return { ok: false, error: `stateDelta.${key} must be one of: ${VALID_ENUMS.join(', ')}` };
+      }
+    } else if (typeof val === 'number') {
+      // backward compat: accept integers, will be handled by enumToInt
+    } else {
+      return { ok: false, error: `stateDelta.${key} must be a string enum or number` };
     }
   }
-  // Default missing delta keys to 0
-  output.stateDelta = output.stateDelta || {};
-  for (const key of stateDeltaKeys) {
-    if (output.stateDelta[key] === undefined) output.stateDelta[key] = 0;
+
+  // stressDelta: optional enum value
+  if (output.stressDelta !== undefined && output.stressDelta !== null) {
+    if (typeof output.stressDelta === 'string' && !VALID_ENUMS.includes(output.stressDelta)) {
+      return { ok: false, error: `stressDelta must be one of: ${VALID_ENUMS.join(', ')}` };
+    }
   }
+  if (output.stressDelta === undefined) output.stressDelta = 'neutral';
 
   if (!output.shortTermUpdate || !output.memoryUpdate) {
     return { ok: false, error: 'Missing shortTermUpdate or memoryUpdate' };
   }
+
+  // locationUpdate is optional inside memoryUpdate, null or object
+  if (output.memoryUpdate.locationUpdate !== undefined && output.memoryUpdate.locationUpdate !== null) {
+    if (typeof output.memoryUpdate.locationUpdate !== 'object') {
+      return { ok: false, error: 'memoryUpdate.locationUpdate must be null or object' };
+    }
+  }
+  if (output.memoryUpdate.locationUpdate === undefined) output.memoryUpdate.locationUpdate = null;
 
   return { ok: true, value: output };
 }
@@ -92,13 +114,13 @@ function createFallbackTurnOutput(userMessage) {
     sendGifNow: false,
     gifKeyword: '',
     stateDelta: {
-      trust: 0,
-      security: 0,
-      intimacy: 0,
-      attachment: 0,
-      jealousy: 0,
-      voiceTendency: 0
+      trust: 'neutral',
+      security: 'neutral',
+      closeness: 'neutral',
+      neediness: 'neutral',
+      possessiveness: 'neutral'
     },
+    stressDelta: 'neutral',
     shortTermUpdate: {
       unresolvedEmotion: 'none',
       interactionTrend: 'steady',
@@ -112,12 +134,17 @@ function createFallbackTurnOutput(userMessage) {
       sharedRoutinesAdd: [],
       revealedFactsAdd: [],
       importantEventsAdd: [],
-      lastSummary: ''
+      lastSummary: '',
+      locationUpdate: null,
+      emotionalExpressionAdd: null,
+      vulnerabilityTopicsAdd: null
     }
   };
 }
 
 module.exports = {
   validateTurnOutput,
-  createFallbackTurnOutput
+  createFallbackTurnOutput,
+  VALID_ENUMS,
+  L3_KEYS
 };
