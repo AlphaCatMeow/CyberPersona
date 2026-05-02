@@ -841,7 +841,7 @@ async function handleHybridCommand(command, arg = '') {
   if (command === 'generate-reference-photo') {
     return {
       kind: 'deprecated',
-      visibleText: 'generate-reference-photo 已废弃。请直接调用 image-api skill：\npython3 ~/.hermes/skills/image-api/scripts/image_api.py --json --size 1024x1024 --quality high --format png --moderation low "standard portrait photo, head and shoulders, neutral background, looking at camera, <appearance>"'
+      visibleText: 'generate-reference-photo 已废弃。请直接调用 image-api skill：\npython3 ~/.hermes/skills/image-api/scripts/image_api.py --json --size 1024x1024 --quality low --format png --moderation low "standard portrait photo, head and shoulders, neutral background, looking at camera, <appearance>"'
     };
   }
   if (command === 'apply-turn-payload') {
