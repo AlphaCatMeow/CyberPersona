@@ -330,6 +330,48 @@ node scripts/init-cyber-persona.js
    └── openingMessage
 ```
 
+## 对话流程
+
+每轮对话需要走完整的 turn 流程：
+
+### 快速方式（推荐）
+
+```bash
+cd ~/.hermes/CyberPersona-hermes
+npm run turn "你在干嘛呀？"
+# 或者直接运行
+node scripts/run-turn.js "你在干嘛呀？"
+```
+
+脚本会自动：
+1. 调用 `turn-payload` 获取 prompt（包含完整上下文）
+2. 调用 LLM 生成 TurnResultPayload（结构化输出）
+3. 调用 `apply-turn-payload` 应用状态变化（L3 系数调制、stress 衰减等）
+4. 输出结果（visibleText、sendVoiceNow、sendImageNow 等）
+
+### 手动方式（高级）
+
+```
+1. node cyber-gf-controller.js turn-payload "<user message>"
+   → 获取 prompt（包含 profile、dynamicState、characterCard 等）
+
+2. 调用 LLM 生成 TurnResultPayload
+   → visibleText: 回复文字
+   → stateDelta: 关系变化（枚举值）
+   → stressDelta: 压力变化
+   → sendVoiceNow/sendImageNow/sendGifNow: 多媒体决策
+
+3. node cyber-gf-controller.js apply-turn-payload <json>
+   → 应用状态变化
+   → 更新 characterCard（量子态坍缩）
+
+4. 根据 TurnResultPayload 发送回复
+   → sendVoiceNow=true: 调用 mimo-tts 生成语音
+   → sendImageNow=true: 调用 image-api 生成图片
+   → sendGifNow=true: 搜索表情包
+   → 发送 visibleText（如果 sendVoiceNow=false）
+```
+
 ## 依赖
 
 | 依赖 | 用途 | 来源 |

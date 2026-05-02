@@ -1,5 +1,30 @@
 # Changelog
 
+## v10.1.2 (2026-05-02)
+
+### 标准化 Turn 流程脚本
+
+#### 新增 `scripts/run-turn.js`
+- 一键运行完整 turn 流程：获取 prompt → 调用 LLM → 应用状态变化
+- 可通过 `npm run turn "消息"` 或 `node scripts/run-turn.js "消息"` 调用
+- 输出结果包含 visibleText、sendVoiceNow、sendImageNow 等
+
+#### 新增 `scripts/verify-turn-flow.js`
+- 验证 turn 流程是否正常工作
+- 可通过 `npm run verify-turn "消息"` 调用
+
+#### 文档更新
+- SKILL.md：新增「快速方式」章节，推荐使用标准化 turn 流程脚本
+- README.md：新增「对话流程」章节，说明完整的 turn 流程
+- package.json：新增 `turn` 和 `verify-turn` 脚本命令
+
+#### 解决的问题
+- 消除手动拼接 turn 流程的错误（跳过 buildTurnContextPayload、手动更新状态等）
+- 确保所有用户都走完整的 turn 流程
+- 为验证流程可行性提供标准化工具
+
+---
+
 ## v10.1.1 (2026-05-02)
 
 ### 标准化初始化脚本

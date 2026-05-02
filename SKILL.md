@@ -1,7 +1,7 @@
 ---
 name: cyber-persona
 description: "Run CyberPersona (赛博女友) roleplay mode — quantum-state character generation, Big Five personality, 5-dimension relationship system, stress modulation, enum-based state deltas, three opening strategies, world sync (weather/holidays/time), TTS voice, image, sticker delivery on Telegram."
-version: 10.1.1
+version: 10.1.2
 metadata:
   hermes:
     tags: [cyberpersona, roleplay, tts, telegram, voice, image, gamification, emotion, sticker, quantum-state, big-five]
@@ -384,6 +384,21 @@ ffmpeg -y -i /tmp/cyber-gf-voice.wav -c:a libopus -b:a 32k /tmp/cyber-gf-voice.o
 ```
 
 ### 2. User Sends a Message → Generate Turn
+
+**快速方式（推荐）：使用标准化 turn 流程脚本**
+
+```bash
+cd ~/.hermes/CyberPersona-hermes
+node scripts/run-turn.js "你在干嘛呀？"
+```
+
+脚本会自动：
+1. 调用 `turn-payload` 获取 prompt
+2. 调用 LLM 生成 TurnResultPayload
+3. 调用 `apply-turn-payload` 应用状态变化
+4. 输出结果（包含 visibleText、sendVoiceNow 等）
+
+**手动方式（高级）：**
 
 **Step A: Get turn context payload**
 ```bash
