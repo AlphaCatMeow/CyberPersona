@@ -6,8 +6,10 @@ function buildInitialProfileAgentPrompt() {
 
 1. signatureLine（签名语）：一句最能代表她个性的话。15字以内。这句话会展示在她的角色卡上。
 2. openingMessage（开场白）：根据 openingStrategy 生成第一句话。
-   - "emotion"：纯情绪碎碎念，不提及地点/天气/动作。20字以内。
-   - "schrodinger"：带互动性的问句。20字以内。
+   - "emotion_vent"：纯情绪碎碎念（开心/生气/郁闷），不提原因，不提及地点/天气/动作。20字以内。
+   - "sensory_share"：分享一个当下的感官体验（闻到什么、听到什么、看到什么）。20字以内。
+   - "schrodinger"：带互动性的问句，让用户猜。20字以内。
+   - "accidental"：假装发错了或手滑的消息。20字以内。
    - "observer"：留空字符串。
 3. emotionalProfile.baseline：一句话描述她的核心情绪风格。
 

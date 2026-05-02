@@ -260,20 +260,21 @@ function buildInitialState(seed, llmOutput) {
   const base = createEmptyState();
   const output = llmOutput || {};
 
-  // 从 seed 填充 characterCard
+  // 从 seed 填充 characterCard（兼容新旧格式）
   const characterCard = { ...base.characterCard };
   if (seed) {
+    const sysBase = seed.systemBase || seed; // v4 嵌套 or v3 扁平
     characterCard.systemBase = {
-      bigFive: seed.bigFive || base.characterCard.systemBase.bigFive,
-      personalityArchetype: seed.personalityArchetype || '',
-      openingStrategy: seed.openingStrategy || ''
+      bigFive: sysBase.bigFive || seed.bigFive || base.characterCard.systemBase.bigFive,
+      personalityArchetype: sysBase.personalityArchetype || seed.personalityArchetype || '',
+      openingStrategy: sysBase.openingStrategy || seed.openingStrategy || ''
     };
     characterCard.appearance = {
       ...(seed.appearance || {}),
       bodyType: seed.appearance?.bodyType || ''
     };
     characterCard.voice = {
-      voiceStyle: seed.voiceStyle || ''
+      voiceStyle: (seed.voice || seed).voiceStyle || ''
     };
   }
 
