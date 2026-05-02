@@ -699,18 +699,20 @@ function mergeMemoryUpdate(revealedMemory, memoryUpdate = {}) {
   }
 
   // Handle speechHabits (量子态：首次展现时坍缩)
+  // 注意：speechHabits 存储在 revealedMemory 中，而不是 profile 中
   if (memoryUpdate.speechHabitsAdd && typeof memoryUpdate.speechHabitsAdd === 'string' && memoryUpdate.speechHabitsAdd.trim()) {
-    if (!next.profile.speechHabits) {
-      next.profile.speechHabits = memoryUpdate.speechHabitsAdd.trim();
+    if (!next.speechHabits) {
+      next.speechHabits = memoryUpdate.speechHabitsAdd.trim();
     }
   }
 
   // Handle quirks (量子态：首次展现时坍缩)
+  // 注意：quirks 存储在 revealedMemory 中，而不是 profile 中
   if (memoryUpdate.quirksAdd && typeof memoryUpdate.quirksAdd === 'string' && memoryUpdate.quirksAdd.trim()) {
-    if (!Array.isArray(next.profile.quirks)) next.profile.quirks = [];
+    if (!Array.isArray(next.quirks)) next.quirks = [];
     // 去重
-    if (!next.profile.quirks.includes(memoryUpdate.quirksAdd.trim())) {
-      next.profile.quirks.push(memoryUpdate.quirksAdd.trim());
+    if (!next.quirks.includes(memoryUpdate.quirksAdd.trim())) {
+      next.quirks.push(memoryUpdate.quirksAdd.trim());
     }
   }
 
