@@ -1,7 +1,7 @@
 ---
 name: cyber-persona
 description: "Run CyberPersona (赛博女友) roleplay mode — quantum-state character generation, Big Five personality, 5-dimension relationship system, stress modulation, enum-based state deltas, three opening strategies, world sync (weather/holidays/time), TTS voice, image, sticker delivery on Telegram."
-version: 10.1.0
+version: 10.1.1
 metadata:
   hermes:
     tags: [cyberpersona, roleplay, tts, telegram, voice, image, gamification, emotion, sticker, quantum-state, big-five]
@@ -320,89 +320,48 @@ When entering: **automatically suppress gateway notifications** via flag file `~
 
 When there's no existing state, the agent must:
 
-**第一步：生成随机种子**
+**第一步：运行标准化初始化脚本**
 
 ```bash
-cd ~/.hermes/CyberPersona-hermes && python3 scripts/random_character_seed.py
+cd ~/.hermes/CyberPersona-hermes && node scripts/init-cyber-persona.js
 ```
 
-Output includes: Big Five personalitySettings, openingStrategy, speechHabits, attachmentStyle, quirks, etc.
+输出包含：
+- 人格原型
+- 开场策略
+- 开场白
+- 外貌标签
+- 声音描述
+- 结果写入 `/tmp/cyber-gf-init-result.json`
 
-**第二步：生成完整人设信息（LLM 推理）**
+**第二步：并行生成两个产物**
 
-1. Generate `InitialStatePayload` JSON using the prompt from step 1. Must include ALL of these sections:
-   - `profile` — object with REQUIRED keys: `coreSummary`, `relationshipSummary`, `defenseSummary`, `startSummary`, `voiceSummary`, `appearance`, `voiceDescription`, `profileSummary`
-   - `personalitySettings` — Big Five values (neuroticism/agreeableness/openness/conscientiousness/extraversion)
-   - `dynamicStateInit` — 5 integer values (0-100): trust, security, closeness, neediness, possessiveness
-   - `shortTermStateInit` — object with `stress: 0` and optional `emotionHistory`, `moodFactors`
-   - `revealedMemoryInit` — object (can be empty `{}`)
-   - `openingMessage` — string (empty for observer strategy)
-   - `openingStrategy` — emotion / schrodinger / observer
-2. Save to `/tmp/cyber-gf-init-payload.json`
+并行执行以下两个任务：
 
-**第三步：并行生成三个产物**
-
-并行执行以下三个任务：
-
-**3.1 输出人物信息卡片**
-- 根据 profile 内容，输出角色信息卡片（格式见下方）
-
-**3.2 生成样本声音**
-```bash
-source ~/.hermes/.env && export MIMO_API_KEY="***" && export MIMO_BASE_URL="$MIMO_BASE_URL"
-python3 ~/.hermes/skills/mimo-v2-5-tts/scripts/mimo_tts_voicedesign.py \
-  --context "<voiceDescription from profile>" \
-  --text "你好呀，今天天气真不错，我们出去走走吧。" \
-  --output ~/.hermes/CyberPersona-hermes/.data/voice-sample.wav
-```
-
-**3.3 生成证件照**
+**2.1 生成证件照**
 ```bash
 source ~/.hermes/.env && export IMAGE_API_KEY="***" && export IMAGE_API_BASE="$IMAGE_API_BASE"
 python3 ~/.hermes/skills/image-api/scripts/image_api.py \
-  --json --size 1024x1024 --quality high --format png --moderation low \
-  "standard portrait photo, head and shoulders, neutral gray background, looking at camera. <appearance description>"
+  --json --size 1024x1536 --quality high --format png --moderation low \
+  "Asian female, <appearance tags from seed>, portrait photo, upper body, soft lighting, looking at camera"
 ```
 
-**第四步：应用 start payload**
-
-1. **Add voiceSamplePath to payload:**
+**2.2 生成语音样本**
 ```bash
-cd ~/.hermes/CyberPersona-hermes && node -e "
-const fs = require('fs');
-const payload = JSON.parse(fs.readFileSync('/tmp/cyber-gf-init-payload.json', 'utf8'));
-payload.profile.voiceSamplePath = '~/.hermes/CyberPersona-hermes/.data/voice-sample.wav';
-fs.writeFileSync('/tmp/cyber-gf-init-payload.json', JSON.stringify(payload, null, 2));
-console.log('voiceSamplePath added');
-"
+source ~/.hermes/.env && export MIMO_API_KEY="***" && export MIMO_BASE_URL="$MIMO_BASE_URL"
+python3 ~/.hermes/skills/mimo-v2-5-tts/scripts/mimo_tts_voicedesign.py \
+  --context "<voiceStyle from seed>" \
+  --text "<openingMessage from seed>" \
+  --output /tmp/cyber-gf-voice.wav
+ffmpeg -y -i /tmp/cyber-gf-voice.wav -c:a libopus -b:a 32k /tmp/cyber-gf-voice.ogg
 ```
 
-2. **Apply start payload:**
-```bash
-cd ~/.hermes/CyberPersona-hermes && node cyber-gf-controller.js apply-start-payload /tmp/cyber-gf-init-payload.json
-```
+**第三步：发送给用户**
 
-**第五步：输出角色介绍**
-
-Send in order:
-- **Character info card** (format below)
-- **Character photo**: reference photo from step 3.3
-- **Character voice**: voice sample from step 3.2
-- **Opening message**: character's first message (empty for observer strategy)
-
-**Character info card format (v9.1.0):**
-```
-💗 新角色已生成
-
-【基本信息】
-姓名：<name>
-年龄：<age>
-性格：<personality summary>
-
-【人格 Big Five】
-神经质(N): X  宜人性(A): X  开放性(O): X  尽责性(C): X  外向性(E): X
-
-【外貌】
+按顺序发送：
+1. **证件照**：使用 `send_message(message="MEDIA:/path/to/photo.png", target="telegram")`
+2. **语音样本**：使用 `send_message(message="MEDIA:/tmp/cyber-gf-voice.ogg", target="telegram")`
+3. **开场白**：使用 `send_message(message="<openingMessage>", target="telegram")`
 <appearance description>
 
 【声音】

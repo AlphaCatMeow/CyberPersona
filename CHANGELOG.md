@@ -1,5 +1,26 @@
 # Changelog
 
+## v10.1.1 (2026-05-02)
+
+### 标准化初始化脚本
+
+#### 新增 `scripts/init-cyber-persona.js`
+- 一键初始化：运行种子脚本 → 应用状态 → 输出结果
+- 可通过 `npm run init` 或 `node scripts/init-cyber-persona.js` 调用
+- 结果写入 `/tmp/cyber-gf-init-result.json` 供后续流程使用
+
+#### 文档更新
+- SKILL.md：更新初始化流程文档，删除旧版 LLM 生成流程
+- README.md：新增「快速开始」章节，推荐使用标准化脚本
+- package.json：新增 `init` 脚本命令
+
+#### 解决的问题
+- 消除手动拼接 node -e 命令的转义问题
+- 消除 /tmp JS 文件的路径问题
+- 为其他用户提供标准化的初始化入口
+
+---
+
 ## v10.1.0 (2026-05-02)
 
 ### 初始化流程去 LLM 化

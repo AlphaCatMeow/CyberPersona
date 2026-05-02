@@ -296,6 +296,22 @@ effective_Δ = raw_Δ_enum × l2_factor × mood_factor
 
 **v10.1.0 去 LLM 化**：初始化完全由脚本完成，零 LLM 开销。
 
+### 快速开始（推荐）
+
+```bash
+cd ~/.hermes/CyberPersona-hermes
+npm run init
+# 或者直接运行
+node scripts/init-cyber-persona.js
+```
+
+脚本会自动：
+1. 运行 `random_character_seed.py` 生成种子数据
+2. 调用 `applyInitialStatePayload` 应用状态
+3. 输出角色信息和下一步指引
+
+### 手动流程（高级）
+
 ```
 1. python3 scripts/random_character_seed.py
    → 输出: systemBase + appearance + voice + openingMessage
