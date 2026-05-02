@@ -1,7 +1,7 @@
 ---
 name: cyber-persona
 description: "Run CyberPersona (赛博女友) roleplay mode — quantum-state character generation, Big Five personality, 5-dimension relationship system, stress modulation, enum-based state deltas, three opening strategies, world sync (weather/holidays/time), TTS voice, image, sticker delivery on Telegram."
-version: 10.1.2
+version: 10.3.0
 metadata:
   hermes:
     tags: [cyberpersona, roleplay, tts, telegram, voice, image, gamification, emotion, sticker, quantum-state, big-five]
@@ -12,37 +12,10 @@ metadata:
 
 CyberPersona is a character roleplay system at `~/.hermes/CyberPersona-hermes`. The agent generates structured `TurnResultPayload` JSON responses as a persistent character, applies state changes, generates TTS audio, and delivers voice messages as native Telegram voice bubbles.
 
-**v9.3.0 Changes (2026-05-01):**
-- **speechHabits 量子态**: 种子不再生成说话习惯，初始为空，首次对话时自然展现并通过 `memoryUpdate.speechHabitsAdd` 记录
-- **quirks 量子态**: 种子不再生成小怪癖，初始为空，首次对话时自然展现并通过 `memoryUpdate.quirksAdd` 记录
-- **Big Five 排序标准化**: 从 N/A/O/C/E 改为 OCEAN (Openness, Conscientiousness, Extraversion, Agreeableness, Neuroticism)
-- **关系初始值人格化**: `computeInitialDynamicState()` 根据 personalitySettings 计算初始关系值，不再使用固定理想值
-  - trust: 受 agreeableness + conscientiousness 影响
-  - security: 受 neuroticism 反向影响
-  - closeness: 受 extraversion + openness 影响
-  - neediness: 受 neuroticism + (100-extraversion) 影响
-  - possessiveness: 受 neuroticism + (100-agreeableness) 影响
-
-**v9.2.0 Changes (2026-05-01):**
-- Quantum state code-layer hard enforcement: `validateInitialProfile` rejects non-empty `revealedFacts`/`emotionalMemories`/`importantEvents`; `applyInitialStatePayload` force-clears as double safety
-- Timezone fix: `getTimeOfDay()` forces `Asia/Shanghai` via `toLocaleString("en-US", {timeZone: "Asia/Shanghai"})`
-- Context window expansion: `recentContext` from 3→10 messages (fixes "fish memory" — character can remember jokes from 5 turns ago)
-- State version migration: `createEmptyState()` version 1→2, `repairState()` auto-migrates v1→v2 (removes voiceTendency, renames intimacy→closeness/attachment→neediness/jealousy→possessiveness, ensures personalitySettings+stress)
-- **User workflow rule: every code change MUST check CHANGELOG + README + SKILL.md + desensitization scan together**
+**Core Philosophy: Quantum State (量子态)**
 
 **Core Philosophy: Quantum State (量子态)**
 > 没有提及就是无限可能，一旦提及，则立刻限定。系统不创造角色，角色通过对话创造自己。
-
-**v9.1.0 Major Changes (2026-05-01):**
-- Big Five personality (N/A/O/C/E) replaces custom L2 parameters
-- 5 L3 dimensions (trust/security/closeness/neediness/possessiveness), voiceTendency removed
-- Three-stage modulation: `effective_Δ = raw_Δ_enum × l2_factor × mood_factor`
-- Enum-based deltas (major_decrease/minor_increase/...) to prevent LLM hallucination
-- Stress system as independent short-term state
-- Three opening strategies (emotion/schrodinger/observer), randomly assigned
-- revealedFacts type classification (setting immutable, experience revisable)
-- World sync: weather (wttr.in), holidays, time awareness (7 periods), location quantum state
-- State narrative translation (numeric → natural language)
 
 **Load this skill when:** user says `开始赛博女友`, sends messages in CyberPersona mode, or asks about the CyberPersona system.
 
@@ -54,8 +27,8 @@ CyberPersona is a character roleplay system at `~/.hermes/CyberPersona-hermes`. 
 | Start (cheat) | `开始赛博女友 cheat on` → 启动并开启 cheat 模式 |
 | Exit | `退出赛博女友` → save session summary → save state → disable mode |
 | Breakup | `我们分手吧` → clear all state and memory |
-| Status | `node cyber-gf-controller.js status` (includes gamification + image stats) |
-| Save session summary | `node cyber-gf-controller.js apply-session-summary <json>` |
+| Status | `node src/controller.js status` (includes gamification + image stats) |
+| Save session summary | `node src/controller.js apply-session-summary <json>` |
 
 ### Cheat Commands
 
@@ -166,6 +139,8 @@ After character generation, randomly assigned (NOT linked to personality):
 | emotion | Character monologues (碎碎念) | User responds freely, first mention collapses |
 | schrodinger | Character asks "你在干嘛？" | User's answer triggers collapse |
 | observer | No opening message | User speaks first, triggers collapse |
+| activity | Character describes current activity | User reacts, triggers collapse |
+| weather | Character comments on weather/time | User responds, triggers collapse |
 
 **For emotion/schrodinger:** LLM only receives L2 + Stress. Prompt forbids mentioning location/weather/action.
 
@@ -190,7 +165,7 @@ LLM context injection format:
 - If location not collapsed: no weather injected, LLM doesn't fabricate
 
 ### Holidays
-- `.data/holidays.json`: 16 fixed holidays + 4 lunar holidays
+- `data/holidays.json`: 16 fixed holidays + 4 lunar holidays
 - Special dates auto-injected into context
 
 ### Time Awareness
@@ -308,7 +283,7 @@ debug 场景 吃醋         → 模拟用户提到其他女生
 ### 1. Start CyberPersona
 
 ```bash
-cd ~/.hermes/CyberPersona-hermes && node cyber-gf-controller.js 开始赛博女友
+cd ~/.hermes/CyberPersona-hermes && node src/controller.js 开始赛博女友
 ```
 
 - If state exists → restores, returns profileSummary + lastSummary
@@ -391,7 +366,7 @@ ffmpeg -y -i /tmp/cyber-gf-voice.wav -c:a libopus -b:a 32k /tmp/cyber-gf-voice.o
 cd ~/.hermes/CyberPersona-hermes
 
 # Step 1: 获取 prompt
-node scripts/get-turn-prompt.js "你在干嘛呀？"
+node scripts/build-turn-prompt.js "你在干嘛呀？"
 # 输出: prompt 文件路径 + 上下文摘要
 
 # Step 2: 调用 LLM（由 Agent 执行）
@@ -410,7 +385,7 @@ node scripts/apply-turn-result.js
 
 **Step A: Get turn context payload**
 ```bash
-cd ~/.hermes/CyberPersona-hermes && node cyber-gf-controller.js turn-payload "<user message>"
+cd ~/.hermes/CyberPersona-hermes && node src/controller.js turn-payload "<user message>"
 ```
 
 Returns: full context JSON including:
@@ -432,6 +407,9 @@ Using the context from Step A, generate a JSON response:
   "sendVoiceNow": false,
   "sendImageNow": false,
   "imagePrompt": "",
+  "imageWaitText": "",
+  "imageFailedText": "",
+  "useReferencePhoto": false,
   "imageCaption": "",
   "sendGifNow": false,
   "gifKeyword": "",
@@ -474,7 +452,7 @@ Save to `/tmp/cyber-gf-turn-result.json` then apply.
 
 **Step C: Apply turn result**
 ```bash
-cd ~/.hermes/CyberPersona-hermes && node cyber-gf-controller.js apply-turn-payload "$(cat /tmp/cyber-gf-turn-result.json)"
+cd ~/.hermes/CyberPersona-hermes && node src/controller.js apply-turn-payload "$(cat /tmp/cyber-gf-turn-result.json)"
 ```
 
 **Step D: Generate TTS + send voice (if sendVoiceNow=true)**
@@ -524,12 +502,12 @@ Check state for generated image, then send via Telegram.
 
 **Before exit, generate session summary:**
 ```bash
-cd ~/.hermes/CyberPersona-hermes && node cyber-gf-controller.js apply-session-summary '{"summary":"对话摘要","keyEvents":["事件1"],"emotionalTone":"温馨"}'
+cd ~/.hermes/CyberPersona-hermes && node src/controller.js apply-session-summary '{"summary":"对话摘要","keyEvents":["事件1"],"emotionalTone":"温馨"}'
 ```
 
 Then exit:
 ```bash
-cd ~/.hermes/CyberPersona-hermes && node cyber-gf-controller.js 退出赛博女友
+cd ~/.hermes/CyberPersona-hermes && node src/controller.js 退出赛博女友
 ```
 
 When exiting: **remove gateway notification suppression flag**.
@@ -538,13 +516,13 @@ When exiting: **remove gateway notification suppression flag**.
 
 | Module | File | Integration Point |
 |--------|------|-------------------|
-| Config | `cyber-gf-config.js` | Configuration loading |
-| State | `cyber-gf-state.js` | State CRUD + L2/L3 modulation + stress + emotionHistory + moodFactors |
-| Profile | `cyber-gf-profile.js` | Initial profile validation (Big Five + 5 L3 dims) |
-| Turn | `cyber-gf-turn.js` | Turn output validation (enum deltas, stressDelta) |
-| Prompts | `cyber-gf-prompts.js` | LLM prompt construction (v9.1.0 full rewrite) |
-| Gamification | `cyber-gf-gamification.js` | Achievements, affection, daily tasks, collections |
-| Controller | `cyber-gf-controller.js` | Main orchestrator, CLI, delivery, world context |
+| Config | `src/config.js` | Configuration loading |
+| State | `src/state.js` | State CRUD + L2/L3 modulation + stress + emotionHistory + moodFactors |
+| Profile | `src/profile.js` | Initial profile validation (Big Five + 5 L3 dims) |
+| Turn | `src/turn.js` | Turn output validation (enum deltas, stressDelta) |
+| Prompts | `src/prompts.js` | LLM prompt construction |
+| Gamification | `src/gamification.js` | Achievements, affection, daily tasks, collections |
+| Controller | `src/controller.js` | Main orchestrator, CLI, delivery, world context |
 
 ## Gamification System
 
@@ -574,7 +552,7 @@ When exiting: **remove gateway notification suppression flag**.
    - **Every voice turn:** `mimo_tts_voiceclone.py --voice-file <sample>` → consistent voice
    - **Singing:** Clone does NOT support singing. Fallback: `mimo_tts.py --voice "茉莉" --text "(唱歌)歌词"`
 
-4. **State file**: `~/.hermes/CyberPersona-hermes/.cyber-gf-state.json` (project root, NOT `.data/`).
+4. **State file**: `~/.hermes/CyberPersona-hermes/data/state.json` (version 3).
 
 5. **Image generation**: Agent calls image-api skill Python scripts directly. Use: `python3 ~/.hermes/skills/image-api/scripts/image_api.py --json ...`. 15-30s for generate, 60-180s for edits. **Use timeout >= 180s.**
 
@@ -616,9 +594,11 @@ When exiting: **remove gateway notification suppression flag**.
 
 22. **Timezone: always use Asia/Shanghai** — `getTimeOfDay()` uses `toLocaleString("en-US", {timeZone: "Asia/Shanghai"})` to ensure correct time perception regardless of server location.
 
-23. **recentContext: 10 messages, not 3** — `getRecentContext(limit=10)` and `slice(-10)` give the LLM 5 full turns of context.恋爱模拟需要上下文拉扯，3 条太短会导致"鱼的记忆"。
+23. **World sync time accuracy** — `getTimeOfDay()` uses the **user's configured timezone** (not server time). If the user is in Asia/Shanghai but the server is in UTC, the character's time perception follows the user. Check `config.timezone` or default to `Asia/Shanghai`.
 
-24. **State version migration** — `createEmptyState()` has `version: 2`. `repairState()` auto-migrates v1→v2: removes `voiceTendency`, renames `intimacy→closeness`/`attachment→neediness`/`jealousy→possessiveness`, ensures `personalitySettings` + `stress` exist.
+24. **recentContext: 10 messages, not 3** — `getRecentContext(limit=10)` and `slice(-10)` give the LLM 5 full turns of context. 恋爱模拟需要上下文拉扯，3 条太短会导致"鱼的记忆"。
+
+25. **State version migration** — `createEmptyState()` has `version: 3`. `repairState()` auto-migrates v1→v2→v3: v2 removes `voiceTendency`, renames `intimacy→closeness`/`attachment→neediness`/`jealousy→possessiveness`; v3 ensures `personalitySettings` + `stress` exist and adds Big Five defaults.
 
 ## Character Response Guidelines (v9.2.0)
 
@@ -642,7 +622,7 @@ When generating TurnResultPayload:
 ## Agent Behavior Consistency
 
 **数据来源原则：** 所有小结和总结中的数字、情绪转变必须从系统实际数据读取，不能自由发挥。
-- 状态变化：从 `apply-turn-payload` 返回结果或 `.cyber-gf-state.json` 读取
+- 状态变化：从 `apply-turn-result.js` 返回结果或 `data/state.json` 读取
 - 情绪转变：从 `emotionHistory` 数组读取
 - 好感度/成就：从 gamification 状态读取
 

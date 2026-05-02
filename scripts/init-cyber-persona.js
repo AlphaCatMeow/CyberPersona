@@ -54,7 +54,7 @@ function main() {
   console.log('[2/2] 应用初始状态...');
   
   // 加载 controller 并应用状态
-  const controller = require(path.join(PROJECT_ROOT, 'cyber-gf-controller'));
+  const controller = require(path.join(PROJECT_ROOT, 'src/controller'));
   const result = controller.applyInitialStatePayload({ seed });
   
   console.log('  状态已保存到 session 文件');

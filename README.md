@@ -91,17 +91,23 @@ debug 发表情 害羞        # 测试贴纸
 ## 架构
 
 ```
-├── SKILL.md                         # Hermes Agent Skill 文件
-├── cyber-gf-config.js               # 配置加载
-├── cyber-gf-controller.js           # 主控制器，CLI 入口，交付逻辑
-├── cyber-gf-state.js                # 状态管理（动态状态、情绪历史、L2/L3 调制、characterCard）
-├── cyber-gf-profile.js              # 角色档案验证与初始化（buildInitialState）
-├── cyber-gf-turn.js                 # 回合输出验证（枚举 delta、characterCardUpdate）
-├── cyber-gf-prompts.js              # LLM prompt 构建（State Narrative Translation）
-├── cyber-gf-gamification.js         # 游戏化系统（成就/好感度/任务/收集/角色卡成就）
+├── src/                             # 核心模块
+│   ├── config.js                    # 配置加载
+│   ├── controller.js                # 主控制器，CLI 入口
+│   ├── state.js                     # 状态管理（L2/L3 调制、characterCard）
+│   ├── profile.js                   # 角色档案验证与初始化
+│   ├── turn.js                      # 回合输出验证（枚举 delta、分级容错）
+│   ├── prompts.js                   # LLM prompt 构建（状态叙事翻译）
+│   └── gamification.js              # 游戏化系统（成就/好感度/任务/收集）
 ├── scripts/
-│   └── random_character_seed.py     # 随机角色种子生成 v5（Big Five + 外貌 + 声音 + 开场白）
-├── .data/
+│   ├── build-turn-prompt.js         # 模块一：上下文构建
+│   ├── apply-turn-result.js         # 模块三：校验与结算
+│   ├── init-cyber-persona.js        # 初始化脚本
+│   └── random_character_seed.py     # 随机角色种子生成 v5
+├── data/                            # 运行时数据（gitignore）
+│   ├── state.json                   # 角色状态
+│   ├── history.json                 # 对话历史
+│   ├── voice-sample.wav             # 语音样本
 │   ├── holidays.json                # 节日数据
 │   └── world-cache.json             # 天气缓存
 ```
@@ -257,7 +263,9 @@ effective_Δ = raw_Δ_enum × l2_factor × mood_factor
   "sendVoiceNow": false,
   "sendImageNow": false,
   "imagePrompt": "英文图片描述",
-  "imageCaption": "图片配文",
+  "imageWaitText": "生图过渡台词",
+  "imageFailedText": "生图失败找补台词",
+  "useReferencePhoto": false,
   "sendGifNow": false,
   "gifKeyword": "表情包中文关键词",
   "analysis": "CoT 分析过程",
@@ -339,26 +347,24 @@ node scripts/init-cyber-persona.js
 ```bash
 cd ~/.hermes/CyberPersona-hermes
 
-# Step 1: 获取 prompt
-node scripts/get-turn-prompt.js "你在干嘛呀？"
+# 模块一：获取 prompt
+node scripts/build-turn-prompt.js "你在干嘛呀？"
 # 输出: prompt 文件路径 + 上下文摘要
 
-# Step 2: 调用 LLM（由 Agent 执行）
-# 使用 Step 1 输出的 prompt 文件调用 LLM
-# 将 LLM 输出保存到 /tmp/cyber-gf-turn-result.json
+# 模块二：Agent 读取 prompt，调用 LLM，生成 TurnResultPayload JSON
+# 保存到 /tmp/cyber-gf-turn-result.json
 
-# Step 3: 应用 turn result
+# 模块三：校验与结算
 node scripts/apply-turn-result.js
-# 输出: visibleText、sendVoiceNow、sendImageNow 等
+# 输出: 投递清单（visibleText、sendVoiceNow、sendImageNow 等）
 
-# Step 4: 发送回复（由 Agent 执行）
-# 根据 Step 3 的输出决定发送什么
+# 模块四：Agent 根据投递清单执行 TTS / 生图 / 投递
 ```
 
 ### 手动方式（高级）
 
 ```
-1. node cyber-gf-controller.js turn-payload "<user message>"
+1. node src/controller.js turn-payload "<user message>"
    → 获取 prompt（包含 profile、dynamicState、characterCard 等）
 
 2. 调用 LLM 生成 TurnResultPayload
@@ -367,7 +373,7 @@ node scripts/apply-turn-result.js
    → stressDelta: 压力变化
    → sendVoiceNow/sendImageNow/sendGifNow: 多媒体决策
 
-3. node cyber-gf-controller.js apply-turn-payload <json>
+3. node src/controller.js apply-turn-payload <json>
    → 应用状态变化
    → 更新 characterCard（量子态坍缩）
 

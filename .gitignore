@@ -3,13 +3,10 @@
 .env.*
 !.env.cyber-gf.example
 
-# Runtime state (contains character data, not for version control)
-.cyber-gf-state.json
-.cyber-gf-history.json
-image-index.json
+# Runtime data (state, history, voice samples, cache)
+data/
 
-# Generated data
-.data/
+# Generated data (legacy paths)
 img-cyber-gf/
 tts-cyber-gf/
 tts-output/
@@ -17,7 +14,6 @@ tts-compare-test/
 tts-emotion-test/
 tts-style-test/
 tts-voicedesign-test/
-tts-official-ab-test/*.mp3
 
 # Test artifacts
 _live_*.json

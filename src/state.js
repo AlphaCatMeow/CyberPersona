@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { getConfig } = require('./cyber-gf-config');
+const { getConfig } = require('./config');
 
 function nowIso() {
   return new Date().toISOString();
@@ -941,42 +941,9 @@ function applyTurnResult(state, turnOutput) {
     }
   }
 
-  // 同步旧版 revealedMemory → characterCard（兼容过渡期）
-  if (turnOutput.memoryUpdate) {
-    const mu = turnOutput.memoryUpdate;
-    // speechHabits → characterCard.habits.speechHabit
-    if (mu.speechHabitsAdd && typeof mu.speechHabitsAdd === 'string' && mu.speechHabitsAdd.trim()) {
-      if (!next.characterCard.habits?.speechHabit) {
-        next.characterCard = revealCardField(next.characterCard, 'habits', 'speechHabit', mu.speechHabitsAdd.trim());
-      }
-    }
-    // quirks → characterCard.habits.quirk
-    if (mu.quirksAdd && typeof mu.quirksAdd === 'string' && mu.quirksAdd.trim()) {
-      if (!next.characterCard.habits?.quirk) {
-        next.characterCard = revealCardField(next.characterCard, 'habits', 'quirk', mu.quirksAdd.trim());
-      }
-    }
-    // emotionalExpression → characterCard.habits.emotionExpression
-    if (mu.emotionalExpressionAdd?.emotion && mu.emotionalExpressionAdd?.expression) {
-      const key = `emotion_${mu.emotionalExpressionAdd.emotion}`;
-      if (!next.characterCard.habits?.[key]) {
-        next.characterCard = revealCardField(next.characterCard, 'habits', key, mu.emotionalExpressionAdd.expression);
-      }
-    }
-    // locationUpdate → characterCard.innerWorld
-    if (mu.locationUpdate?.current) {
-      next.characterCard = revealCardField(next.characterCard, 'innerWorld', 'location', mu.locationUpdate.current);
-    }
-    // revealedFactsAdd → 对应 characterCard 分类
-    if (Array.isArray(mu.revealedFactsAdd)) {
-      for (const fact of mu.revealedFactsAdd) {
-        if (fact?.key && fact?.value) {
-          const cat = _inferCategory(fact.key);
-          next.characterCard = revealCardField(next.characterCard, cat, fact.key, fact.value);
-        }
-      }
-    }
-  }
+  // ── CharacterCard 同步（speechHabits/quirks/emotionExpression/location）──
+  // 这些字段通过 characterCardUpdate 直接写入 characterCard，不再从 revealedMemory 同步。
+  // 旧版的 revealedMemory → characterCard 同步已移除，避免双写重复。
 
   next = storeLastTurnTts(next, turnOutput);
   next = incrementTurnCount(next);
@@ -984,9 +951,13 @@ function applyTurnResult(state, turnOutput) {
   // Push currentEmotion to emotionHistory
   if (turnOutput.currentEmotion) {
     const hist = Array.isArray(next.shortTermState.emotionHistory) ? next.shortTermState.emotionHistory : [];
+    // Use LLM-provided trigger from shortTermUpdate, fallback to empty
+    const trigger = (turnOutput.shortTermUpdate?.unresolvedEmotion && turnOutput.shortTermUpdate.unresolvedEmotion !== 'none')
+      ? turnOutput.shortTermUpdate.unresolvedEmotion
+      : '';
     hist.push({
       emotion: turnOutput.currentEmotion,
-      trigger: turnOutput.shortTermUpdate?.unresolvedEmotion || ''
+      trigger: trigger
     });
     next.shortTermState.emotionHistory = hist.slice(-3);
   }

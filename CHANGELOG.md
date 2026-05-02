@@ -1,22 +1,52 @@
 # Changelog
 
+## v10.3.0 (2026-05-03)
+
+### Turn 流程 v2.0 规范化重构
+
+#### 新增 `scripts/build-turn-prompt.js`
+- 模块一：上下文构建，替代 `get-turn-prompt.js`（旧脚本保留向后兼容）
+- 通过 `npm run build-turn-prompt "消息"` 调用
+
+#### 重写 `scripts/apply-turn-result.js`
+- 模块三：校验与结算
+- **分级容错**：JSON 解析失败→兜底台词、stateDelta 逐字段独立校验、visibleText 能用就用不能用兜底
+- **useReferencePhoto 自动处理**：`true` 时自动追加人物一致性指令到 imagePrompt
+- 通过 `npm run apply-turn-result` 调用
+
+#### 新增 JSON 模板字段
+- `imageWaitText`：生图过渡台词（LLM 根据角色性格生成）
+- `imageFailedText`：生图失败找补台词（LLM 根据角色性格生成）
+- `useReferencePhoto`：true=改图模式（有角色出镜），false=普通生图
+
+#### 校验改进
+- stateDelta 从 all-or-nothing 改为逐字段独立校验（错误字段→neutral，其余保留）
+- stressDelta 同样独立校验
+- 枚举三重保险：prompt 文本 + JSON 模板 + 代码校验
+
+#### 投递规范化
+- 快慢分流：语音同步（60s 超时降级）、图片异步（delegate_task 子 agent）
+- 投递顺序：语音/文字 → 贴纸 → imageWaitText → 图片
+- imageWaitText 独立于 visibleText，不拼接
+
+#### 文档更新
+- SKILL.md：重写 Full Turn Cycle 为 4 模块架构，版本升级至 v10.3.0
+- package.json：版本升级至 v10.3.0，新增 `build-turn-prompt` 命令
+
 ## v10.1.2 (2026-05-02)
 
 ### 标准化 Turn 流程脚本
 
-#### 新增 `scripts/run-turn.js`
-- 一键运行完整 turn 流程：获取 prompt → 调用 LLM → 应用状态变化
-- 可通过 `npm run turn "消息"` 或 `node scripts/run-turn.js "消息"` 调用
-- 输出结果包含 visibleText、sendVoiceNow、sendImageNow 等
+#### 新增 `scripts/run-turn.js` (已废弃，v10.3.0 移除)
+- 一键运行完整 turn 流程，已被 `build-turn-prompt.js` + `apply-turn-result.js` 替代
 
-#### 新增 `scripts/verify-turn-flow.js`
-- 验证 turn 流程是否正常工作
-- 可通过 `npm run verify-turn "消息"` 调用
+#### 新增 `scripts/verify-turn-flow.js` (已废弃，v10.3.0 移除)
+- 验证 turn 流程，已无必要保留
 
 #### 文档更新
-- SKILL.md：新增「快速方式」章节，推荐使用标准化 turn 流程脚本
-- README.md：新增「对话流程」章节，说明完整的 turn 流程
-- package.json：新增 `turn` 和 `verify-turn` 脚本命令
+- SKILL.md：新增标准化 turn 流程文档
+- README.md：新增「对话流程」章节
+- package.json：新增脚本命令（v10.3.0 已清理）
 
 #### 解决的问题
 - 消除手动拼接 turn 流程的错误（跳过 buildTurnContextPayload、手动更新状态等）

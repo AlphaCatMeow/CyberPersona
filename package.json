@@ -1,15 +1,15 @@
 {
   "name": "cyber-persona",
-  "version": "10.1.2",
+  "version": "10.3.0",
   "description": "赛博女友 — 基于 Hermes Agent 的角色扮演系统，支持角色卡、量子态、TTS 语音、图片生成和游戏化",
-  "main": "cyber-gf-controller.js",
+  "main": "src/controller.js",
   "scripts": {
-    "start": "node cyber-gf-controller.js 开始赛博女友",
+    "start": "node src/controller.js 开始赛博女友",
     "init": "node scripts/init-cyber-persona.js",
-    "get-turn-prompt": "node scripts/get-turn-prompt.js",
+    "build-turn-prompt": "node scripts/build-turn-prompt.js",
     "apply-turn-result": "node scripts/apply-turn-result.js",
-    "status": "node cyber-gf-controller.js status",
-    "test": "node -e \"require('./cyber-gf-state'); require('./cyber-gf-turn'); require('./cyber-gf-profile'); require('./cyber-gf-prompts'); require('./cyber-gf-gamification'); console.log('All modules loaded OK')\""
+    "status": "node src/controller.js status",
+    "test": "node -e \"require('./src/state'); require('./src/turn'); require('./src/profile'); require('./src/prompts'); require('./src/gamification'); console.log('All modules loaded OK')\""
   },
   "keywords": [
     "cyberpersona",

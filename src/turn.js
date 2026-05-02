@@ -5,12 +5,14 @@ function validateTurnOutput(output) {
   if (!output || typeof output !== 'object') {
     return { ok: false, error: 'Turn output is not an object' };
   }
-  const requiredStringFields = ['analysis', 'visibleText', 'currentEmotion'];
+  const requiredStringFields = ['analysis', 'visibleText'];
   for (const key of requiredStringFields) {
     if (typeof output[key] !== 'string' || !output[key].trim()) {
       return { ok: false, error: `Missing turn field: ${key}` };
     }
   }
+  // currentEmotion: optional, default empty
+  if (output.currentEmotion === undefined || output.currentEmotion === null) output.currentEmotion = '';
   if (typeof output.sendVoiceNow !== 'boolean') {
     return { ok: false, error: 'sendVoiceNow must be boolean' };
   }
@@ -34,6 +36,16 @@ function validateTurnOutput(output) {
   if (output.imagePrompt === undefined) output.imagePrompt = '';
   if (output.imageCaption === undefined) output.imageCaption = '';
 
+  // imageWaitText, imageFailedText: optional strings
+  if (output.imageWaitText === undefined || output.imageWaitText === null) output.imageWaitText = '';
+  if (output.imageFailedText === undefined || output.imageFailedText === null) output.imageFailedText = '';
+
+  // useReferencePhoto: optional boolean, default false
+  if (output.useReferencePhoto !== undefined && typeof output.useReferencePhoto !== 'boolean') {
+    return { ok: false, error: 'useReferencePhoto must be boolean' };
+  }
+  if (output.useReferencePhoto === undefined) output.useReferencePhoto = false;
+
   // sendGifNow is optional, default false
   if (output.sendGifNow !== undefined && typeof output.sendGifNow !== 'boolean') {
     return { ok: false, error: 'sendGifNow must be boolean' };
@@ -47,7 +59,7 @@ function validateTurnOutput(output) {
   }
   if (output.gifKeyword === undefined) output.gifKeyword = '';
 
-  // stateDelta: enum values for each L3 dimension
+  // stateDelta: per-field enum validation (discard invalid fields, keep valid ones)
   output.stateDelta = output.stateDelta || {};
   for (const key of L3_KEYS) {
     const val = output.stateDelta[key];
@@ -55,19 +67,20 @@ function validateTurnOutput(output) {
       output.stateDelta[key] = 'neutral';
     } else if (typeof val === 'string') {
       if (!VALID_ENUMS.includes(val)) {
-        return { ok: false, error: `stateDelta.${key} must be one of: ${VALID_ENUMS.join(', ')}` };
+        // Discard invalid field: reset to neutral, don't fail entire output
+        output.stateDelta[key] = 'neutral';
       }
     } else if (typeof val === 'number') {
       // backward compat: accept integers, will be handled by enumToInt
     } else {
-      return { ok: false, error: `stateDelta.${key} must be a string enum or number` };
+      output.stateDelta[key] = 'neutral';
     }
   }
 
   // stressDelta: optional enum value
   if (output.stressDelta !== undefined && output.stressDelta !== null) {
     if (typeof output.stressDelta === 'string' && !VALID_ENUMS.includes(output.stressDelta)) {
-      return { ok: false, error: `stressDelta must be one of: ${VALID_ENUMS.join(', ')}` };
+      output.stressDelta = 'neutral';
     }
   }
   if (output.stressDelta === undefined) output.stressDelta = 'neutral';
@@ -122,7 +135,7 @@ function validateTurnOutput(output) {
 
 function createFallbackTurnOutput(userMessage) {
   const text = String(userMessage || '').trim();
-  let safeText = '我在呢，刚刚有点卡住了……你再跟我说一句，我这次认真接住你。';
+  let safeText = '刚刚没看到，你说啥？';
   let emotion = '短暂失衡后主动修复';
   if (/想你|在吗|在干嘛/.test(text)) {
     safeText = '在呀。你这样突然来找我，很难不让人多想一点。';
@@ -144,6 +157,9 @@ function createFallbackTurnOutput(userMessage) {
     sendImageNow: false,
     imagePrompt: '',
     imageCaption: '',
+    imageWaitText: '',
+    imageFailedText: '',
+    useReferencePhoto: false,
     sendGifNow: false,
     gifKeyword: '',
     stateDelta: {

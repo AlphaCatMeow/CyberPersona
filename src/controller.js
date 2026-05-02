@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 const fs = require('fs');
-const { getConfig, ENV_PATH, validateConfig } = require('./cyber-gf-config');
+const { getConfig, ENV_PATH, validateConfig } = require('./config');
 const {
   loadState,
   saveState,
@@ -14,16 +14,14 @@ const {
   storeLastGeneratedImage,
   updateSessionStartTime,
   getCardFlatValues
-} = require('./cyber-gf-state');
-const { buildInitialState, validateInitialProfile } = require('./cyber-gf-profile');
-const { validateTurnOutput, createFallbackTurnOutput } = require('./cyber-gf-turn');
+} = require('./state');
+const { buildInitialState, validateInitialProfile } = require('./profile');
+const { validateTurnOutput, createFallbackTurnOutput } = require('./turn');
 
-const { buildTurnAgentPrompt, buildDebugTurnAgentPrompt } = require('./cyber-gf-prompts');
-const { createGamificationSystem } = require('./cyber-gf-gamification');
+const { buildTurnAgentPrompt, buildDebugTurnAgentPrompt } = require('./prompts');
+const { createGamificationSystem } = require('./gamification');
 function getDefaultTelegramTarget() {
-  const cfg = getConfig();
-  const chatId = cfg.telegram?.chatId || '';
-  return chatId ? `telegram:${chatId}` : 'telegram';
+  return 'telegram';
 }
 
 function getHistoryPath() {
@@ -281,8 +279,8 @@ function getStatePayload() {
 }
 
 // ── World Context (世界观同步) ──────────────────────────────────────
-const WORLD_CACHE_PATH = require('path').join(__dirname, '.data', 'world-cache.json');
-const HOLIDAYS_PATH = require('path').join(__dirname, '.data', 'holidays.json');
+const WORLD_CACHE_PATH = require('path').join(__dirname, '..', 'data', 'world-cache.json');
+const HOLIDAYS_PATH = require('path').join(__dirname, '..', 'data', 'holidays.json');
 const WEATHER_CACHE_TTL = 15 * 60 * 1000; // 15 minutes
 
 function getWeatherCache() {
@@ -478,10 +476,10 @@ async function runHybridSelfCheck() {
   }
 
   try {
-    require('./cyber-gf-state');
-    require('./cyber-gf-profile');
-    require('./cyber-gf-turn');
-    require('./cyber-gf-prompts');
+    require('./state');
+    require('./profile');
+    require('./turn');
+    require('./prompts');
     result.checks.modulesLoadable = true;
   } catch (err) {
     result.issues.push(`MODULE_LOAD: ${err.message}`);
@@ -664,24 +662,7 @@ async function speakTurnPayload(turnResultPayload) {
 }
 
 async function runTurnResultFlow(turnResultPayload, options = {}) {
-  const userMessage = options.userMessage || turnResultPayload.__userMessage || "";
-  const applied = applyTurnResultPayload(turnResultPayload, userMessage);
-  let audio = null;
-  if (applied.turnOutput.sendVoiceNow) {
-    const result = await speakTurnPayload(applied.turnOutput);
-    audio = result.audio;
-  }
-  const delivery = buildUnifiedDelivery(applied.turnOutput, {
-    target: options.target,
-    forceDebug: userMessage.startsWith("debug+")
-  });
-  return {
-    kind: "turn_flow",
-    applied,
-    audio,
-    image: null,
-    delivery
-  };
+  throw new Error('runTurnResultFlow is deprecated. Use build-turn-prompt → apply-turn-result flow instead.');
 }
 
 async function runStartFlow(initialPayload) {

@@ -1,4 +1,4 @@
-const { createEmptyState } = require('./cyber-gf-state');
+const { createEmptyState } = require('./state');
 
 // Integer dimensions validated 0–100
 const DIMENSION_MIN = 0;
@@ -76,63 +76,6 @@ function validateInitialProfile(output) {
   if ('openingMessage' in output && typeof output.openingMessage !== 'string') {
     return { ok: false, error: 'openingMessage must be a string' };
   }
-  return { ok: true, value: output };
-
-  // v2 兼容格式：需要 profile 等字段
-  const profile = output.profile;
-  const dynamicStateInit = output.dynamicStateInit;
-  const shortTermStateInit = output.shortTermStateInit;
-  const revealedMemoryInit = output.revealedMemoryInit;
-  const openingMessage = output.openingMessage;
-
-  if (!profile || !dynamicStateInit || !shortTermStateInit || !revealedMemoryInit) {
-    return { ok: false, error: 'Missing required top-level sections' };
-  }
-
-  const requiredProfileKeys = ['coreSummary', 'relationshipSummary', 'defenseSummary', 'startSummary', 'voiceSummary', 'appearance', 'voiceDescription', 'profileSummary'];
-  for (const key of requiredProfileKeys) {
-    if (typeof profile[key] !== 'string' || !profile[key].trim()) {
-      return { ok: false, error: `Missing profile field: ${key}` };
-    }
-  }
-
-  // Validate personalitySettings (L2)
-  const ps = output.personalitySettings;
-  if (ps) {
-    const l2Keys = ['neuroticism', 'agreeableness', 'openness', 'conscientiousness', 'extraversion'];
-    for (const key of l2Keys) {
-      if (ps[key] !== undefined && (typeof ps[key] !== 'number' || !Number.isInteger(ps[key]) || ps[key] < 0 || ps[key] > 100)) {
-        return { ok: false, error: `personalitySettings.${key} must be integer 0-100` };
-      }
-    }
-  }
-
-  const dimensionKeys = Object.keys(STARTING_RANGES);
-  for (const key of dimensionKeys) {
-    const value = dynamicStateInit[key];
-    if (typeof value !== 'number' || !Number.isInteger(value) || value < DIMENSION_MIN || value > DIMENSION_MAX) {
-      return { ok: false, error: `Invalid dynamic state value for ${key}: must be integer ${DIMENSION_MIN}-${DIMENSION_MAX}` };
-    }
-  }
-
-  // v5: emotionalProfile 已删除（违背量子态原则，与 Big Five 重复）
-
-  if (typeof openingMessage !== 'string' || !openingMessage.trim()) {
-    return { ok: false, error: 'openingMessage is required' };
-  }
-
-  // Quantum State Enforcement: 初始记忆必须为空，留给后续对话坍缩
-  const quantumFields = [
-    { key: 'revealedFacts', label: '揭示的事实' },
-    { key: 'emotionalMemories', label: '情绪记忆' },
-    { key: 'importantEvents', label: '重要事件' },
-  ];
-  for (const { key, label } of quantumFields) {
-    if (revealedMemoryInit[key] && revealedMemoryInit[key].length > 0) {
-      return { ok: false, error: `Quantum State Violation: revealedMemoryInit.${key} 必须为空数组！${label}在初始状态下禁止预设，必须在后续对话中自然坍缩。` };
-    }
-  }
-
   return { ok: true, value: output };
 }
 
