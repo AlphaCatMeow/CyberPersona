@@ -234,9 +234,7 @@ def generate_seed():
     profession = random.choice(professions)
     selected_hobbies = random.sample(hobbies, random.randint(2, 4))
     voice = random.choice(voice_styles)
-    speech = random.choice(speech_habits)
     archetype = random.choice(big_five_archetypes)
-    selected_quirks = random.sample(quirks, random.randint(1, 2))
     strategy = random.choice(opening_strategies)
     age = random.randint(19, 28)
 
@@ -252,16 +250,14 @@ def generate_seed():
         "profession": profession,
         "hobbies": selected_hobbies,
         "voiceStyle": voice,
-        "speechHabits": speech,
         "personalityArchetype": archetype["label"],
         "bigFive": {
-            "n": archetype["n"],
-            "a": archetype["a"],
             "o": archetype["o"],
             "c": archetype["c"],
             "e": archetype["e"],
+            "a": archetype["a"],
+            "n": archetype["n"],
         },
-        "quirks": selected_quirks,
         "openingStrategy": strategy,
         "seedId": random.randint(10000, 99999),
     }

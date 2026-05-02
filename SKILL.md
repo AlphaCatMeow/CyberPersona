@@ -1,7 +1,7 @@
 ---
 name: cyber-persona
 description: "Run CyberPersona (赛博女友) roleplay mode — quantum-state character generation, Big Five personality, 5-dimension relationship system, stress modulation, enum-based state deltas, three opening strategies, world sync (weather/holidays/time), TTS voice, image, sticker delivery on Telegram."
-version: 9.2.0
+version: 9.3.0
 metadata:
   hermes:
     tags: [cyberpersona, roleplay, tts, telegram, voice, image, gamification, emotion, sticker, quantum-state, big-five]
@@ -11,6 +11,24 @@ metadata:
 # CyberPersona (赛博女友) Agent Workflow
 
 CyberPersona is a character roleplay system at `~/.hermes/CyberPersona-hermes`. The agent generates structured `TurnResultPayload` JSON responses as a persistent character, applies state changes, generates TTS audio, and delivers voice messages as native Telegram voice bubbles.
+
+**v9.3.0 Changes (2026-05-01):**
+- **speechHabits 量子态**: 种子不再生成说话习惯，初始为空，首次对话时自然展现并通过 `memoryUpdate.speechHabitsAdd` 记录
+- **quirks 量子态**: 种子不再生成小怪癖，初始为空，首次对话时自然展现并通过 `memoryUpdate.quirksAdd` 记录
+- **Big Five 排序标准化**: 从 N/A/O/C/E 改为 OCEAN (Openness, Conscientiousness, Extraversion, Agreeableness, Neuroticism)
+- **关系初始值人格化**: `computeInitialDynamicState()` 根据 personalitySettings 计算初始关系值，不再使用固定理想值
+  - trust: 受 agreeableness + conscientiousness 影响
+  - security: 受 neuroticism 反向影响
+  - closeness: 受 extraversion + openness 影响
+  - neediness: 受 neuroticism + (100-extraversion) 影响
+  - possessiveness: 受 neuroticism + (100-agreeableness) 影响
+
+**v9.2.0 Changes (2026-05-01):**
+- Quantum state code-layer hard enforcement: `validateInitialProfile` rejects non-empty `revealedFacts`/`emotionalMemories`/`importantEvents`; `applyInitialStatePayload` force-clears as double safety
+- Timezone fix: `getTimeOfDay()` forces `Asia/Shanghai` via `toLocaleString("en-US", {timeZone: "Asia/Shanghai"})`
+- Context window expansion: `recentContext` from 3→10 messages (fixes "fish memory" — character can remember jokes from 5 turns ago)
+- State version migration: `createEmptyState()` version 1→2, `repairState()` auto-migrates v1→v2 (removes voiceTendency, renames intimacy→closeness/attachment→neediness/jealousy→possessiveness, ensures personalitySettings+stress)
+- **User workflow rule: every code change MUST check CHANGELOG + README + SKILL.md + desensitization scan together**
 
 **Core Philosophy: Quantum State (量子态)**
 > 没有提及就是无限可能，一旦提及，则立刻限定。系统不创造角色，角色通过对话创造自己。

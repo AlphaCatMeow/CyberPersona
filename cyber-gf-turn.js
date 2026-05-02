@@ -84,6 +84,22 @@ function validateTurnOutput(output) {
   }
   if (output.memoryUpdate.locationUpdate === undefined) output.memoryUpdate.locationUpdate = null;
 
+  // speechHabitsAdd is optional, null or string
+  if (output.memoryUpdate.speechHabitsAdd !== undefined && output.memoryUpdate.speechHabitsAdd !== null) {
+    if (typeof output.memoryUpdate.speechHabitsAdd !== 'string') {
+      return { ok: false, error: 'memoryUpdate.speechHabitsAdd must be null or string' };
+    }
+  }
+  if (output.memoryUpdate.speechHabitsAdd === undefined) output.memoryUpdate.speechHabitsAdd = null;
+
+  // quirksAdd is optional, null or string
+  if (output.memoryUpdate.quirksAdd !== undefined && output.memoryUpdate.quirksAdd !== null) {
+    if (typeof output.memoryUpdate.quirksAdd !== 'string') {
+      return { ok: false, error: 'memoryUpdate.quirksAdd must be null or string' };
+    }
+  }
+  if (output.memoryUpdate.quirksAdd === undefined) output.memoryUpdate.quirksAdd = null;
+
   return { ok: true, value: output };
 }
 
@@ -137,6 +153,8 @@ function createFallbackTurnOutput(userMessage) {
       lastSummary: '',
       locationUpdate: null,
       emotionalExpressionAdd: null,
+      speechHabitsAdd: null,
+      quirksAdd: null,
       vulnerabilityTopicsAdd: null
     }
   };

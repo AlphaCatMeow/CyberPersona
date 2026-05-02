@@ -22,6 +22,47 @@ const FALLBACK_DYNAMIC_STATE_INIT = {
   possessiveness: 10
 };
 
+/**
+ * 根据 personalitySettings (Big Five) 计算初始关系值
+ * 遵循三阶段调制系统的逻辑：人格影响初始状态
+ */
+function computeInitialDynamicState(personalitySettings) {
+  const ps = personalitySettings || {};
+  const n = ps.neuroticism ?? 50;
+  const a = ps.agreeableness ?? 50;
+  const o = ps.openness ?? 50;
+  const c = ps.conscientiousness ?? 50;
+  const e = ps.extraversion ?? 50;
+
+  // trust: 受 agreeableness + conscientiousness 影响
+  // 高 A + 高 C → 更容易信任
+  const trust = Math.round(20 + (a * 0.3) + (c * 0.2));
+  
+  // security: 受 neuroticism 影响（反向）
+  // 低 N → 更有安全感
+  const security = Math.round(50 - (n * 0.3));
+  
+  // closeness: 受 extraversion + openness 影响
+  // 高 E + 高 O → 更愿意亲近
+  const closeness = Math.round(5 + (e * 0.25) + (o * 0.15));
+  
+  // neediness: 受 neuroticism + (100 - extraversion) 影响
+  // 高 N + 低 E → 更需要陪伴
+  const neediness = Math.round(10 + (n * 0.2) + ((100 - e) * 0.15));
+  
+  // possessiveness: 受 neuroticism + (100 - agreeableness) 影响
+  // 高 N + 低 A → 更强占有欲
+  const possessiveness = Math.round(5 + (n * 0.15) + ((100 - a) * 0.15));
+
+  return {
+    trust: clampToRange(trust, 5, 70),
+    security: clampToRange(security, 5, 70),
+    closeness: clampToRange(closeness, 0, 50),
+    neediness: clampToRange(neediness, 0, 50),
+    possessiveness: clampToRange(possessiveness, 0, 50)
+  };
+}
+
 const FALLBACK_STRESS = 20;
 
 const MINOR_MARGIN = 5;
@@ -149,6 +190,18 @@ function resolveInitialProfilePayload(output, options = {}) {
   }
 
   const payload = validated.value;
+  
+  // 根据 personalitySettings 计算初始关系值（如果 LLM 没有提供或提供的是默认值）
+  if (payload.personalitySettings && payload.dynamicStateInit) {
+    const computed = computeInitialDynamicState(payload.personalitySettings);
+    // 只有当 LLM 提供的值接近默认理想值时才覆盖（说明 LLM 没有认真推导）
+    const isDefault = Math.abs(payload.dynamicStateInit.trust - 30) < 5 && 
+                      Math.abs(payload.dynamicStateInit.security - 30) < 5;
+    if (isDefault) {
+      payload.dynamicStateInit = computed;
+    }
+  }
+  
   const classification = classifyInitialDynamicState(payload.dynamicStateInit);
   if (classification.status === 'ok') {
     return {
@@ -235,6 +288,7 @@ module.exports = {
   classifyInitialDynamicState,
   normalizeInitialDynamicState,
   resolveInitialProfilePayload,
+  computeInitialDynamicState,
   STARTING_RANGES,
   FALLBACK_DYNAMIC_STATE_INIT,
   FALLBACK_STRESS,

@@ -1,5 +1,39 @@
 # Changelog
 
+## v9.3.0 (2026-05-01)
+
+### 量子态完善
+
+#### speechHabits 量子态
+- 种子脚本 `random_character_seed.py`：移除 `speechHabits` 字段生成
+- 初始 prompt：添加 speechHabits 量子态警告（不在创建时设定）
+- 回合 prompt：添加 `【说话习惯 — 量子态】` 段落，指导 LLM 自然展现并记录
+- 状态模块 `cyber-gf-state.js`：添加 `speechHabitsAdd` 处理逻辑（首次坍缩）
+- 验证模块 `cyber-gf-turn.js`：添加 `speechHabitsAdd` 验证和 fallback
+
+#### quirks 量子态
+- 种子脚本 `random_character_seed.py`：移除 `quirks` 字段生成
+- 初始 prompt：添加 quirks 量子态警告（不在创建时设定）
+- 回合 prompt：添加 `【小怪癖 — 量子态】` 段落，指导 LLM 自然展现并记录
+- 状态模块 `cyber-gf-state.js`：添加 `quirksAdd` 处理逻辑（首次坍缩，去重）
+- 验证模块 `cyber-gf-turn.js`：添加 `quirksAdd` 验证和 fallback
+
+#### Big Five 排序标准化
+- 种子脚本：bigFive 字段从 N/A/O/C/E 改为 OCEAN 顺序
+- 初始 prompt：personalitySettings JSON 和说明文字改为 OCEAN 顺序
+
+#### 关系初始值人格化
+- 档案模块 `cyber-gf-profile.js`：新增 `computeInitialDynamicState(personalitySettings)` 函数
+- 根据 Big Five 计算初始关系值：
+  - trust: 20 + A×0.3 + C×0.2（高信任倾向+高尽责 → 更信任）
+  - security: 50 - N×0.3（低情绪波动 → 更有安全感）
+  - closeness: 5 + E×0.25 + O×0.15（高外向+高开放 → 更亲近）
+  - neediness: 10 + N×0.2 + (100-E)×0.15（高情绪波动+低外向 → 更需要陪伴）
+  - possessiveness: 5 + N×0.15 + (100-A)×0.15（高情绪波动+低信任倾向 → 更强占有欲）
+- `resolveInitialProfilePayload`：检测 LLM 是否使用默认值，若是则用计算值覆盖
+
+---
+
 ## v9.2.0 (2026-05-01)
 
 ### 强化

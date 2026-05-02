@@ -45,6 +45,8 @@ function createEmptyState() {
       appearance: '',
       profileSummary: '',
       referencePhotoPath: '',
+      speechHabits: '',
+      quirks: [],
       emotionalProfile: {
         baseline: '',
         vulnerabilityTopics: []
@@ -583,6 +585,22 @@ function mergeMemoryUpdate(revealedMemory, memoryUpdate = {}) {
       if (!next.emotionalExpression[expr.emotion.trim()]) {
         next.emotionalExpression[expr.emotion.trim()] = expr.expression.trim();
       }
+    }
+  }
+
+  // Handle speechHabits (量子态：首次展现时坍缩)
+  if (memoryUpdate.speechHabitsAdd && typeof memoryUpdate.speechHabitsAdd === 'string' && memoryUpdate.speechHabitsAdd.trim()) {
+    if (!next.profile.speechHabits) {
+      next.profile.speechHabits = memoryUpdate.speechHabitsAdd.trim();
+    }
+  }
+
+  // Handle quirks (量子态：首次展现时坍缩)
+  if (memoryUpdate.quirksAdd && typeof memoryUpdate.quirksAdd === 'string' && memoryUpdate.quirksAdd.trim()) {
+    if (!Array.isArray(next.profile.quirks)) next.profile.quirks = [];
+    // 去重
+    if (!next.profile.quirks.includes(memoryUpdate.quirksAdd.trim())) {
+      next.profile.quirks.push(memoryUpdate.quirksAdd.trim());
     }
   }
 
