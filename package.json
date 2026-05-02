@@ -6,8 +6,8 @@
   "scripts": {
     "start": "node cyber-gf-controller.js 开始赛博女友",
     "init": "node scripts/init-cyber-persona.js",
-    "turn": "node scripts/run-turn.js",
-    "verify-turn": "node scripts/verify-turn-flow.js",
+    "get-turn-prompt": "node scripts/get-turn-prompt.js",
+    "apply-turn-result": "node scripts/apply-turn-result.js",
     "status": "node cyber-gf-controller.js status",
     "test": "node -e \"require('./cyber-gf-state'); require('./cyber-gf-turn'); require('./cyber-gf-profile'); require('./cyber-gf-prompts'); require('./cyber-gf-gamification'); console.log('All modules loaded OK')\""
   },

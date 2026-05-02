@@ -385,18 +385,26 @@ ffmpeg -y -i /tmp/cyber-gf-voice.wav -c:a libopus -b:a 32k /tmp/cyber-gf-voice.o
 
 ### 2. User Sends a Message → Generate Turn
 
-**快速方式（推荐）：使用标准化 turn 流程脚本**
+**标准化 turn 流程（推荐）：**
 
 ```bash
 cd ~/.hermes/CyberPersona-hermes
-node scripts/run-turn.js "你在干嘛呀？"
-```
 
-脚本会自动：
-1. 调用 `turn-payload` 获取 prompt
-2. 调用 LLM 生成 TurnResultPayload
-3. 调用 `apply-turn-payload` 应用状态变化
-4. 输出结果（包含 visibleText、sendVoiceNow 等）
+# Step 1: 获取 prompt
+node scripts/get-turn-prompt.js "你在干嘛呀？"
+# 输出: prompt 文件路径 + 上下文摘要
+
+# Step 2: 调用 LLM（由 Agent 执行）
+# 使用 Step 1 输出的 prompt 文件调用 LLM
+# 将 LLM 输出保存到 /tmp/cyber-gf-turn-result.json
+
+# Step 3: 应用 turn result
+node scripts/apply-turn-result.js
+# 输出: visibleText、sendVoiceNow、sendImageNow 等
+
+# Step 4: 发送回复（由 Agent 执行）
+# 根据 Step 3 的输出决定发送什么
+```
 
 **手动方式（高级）：**
 
