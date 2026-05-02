@@ -1,5 +1,46 @@
 # Changelog
 
+## v10.0.0 (2026-05-02)
+
+### 角色卡系统 — 数据结构与初始化生命周期
+
+#### 角色信息模板（characterCard）
+- 新增 `characterCard` 作为角色数据的唯一数据源
+- 创世阶段（脚本生成）：`systemBase`（Big Five + archetype）、`appearance`（含 bodyType）、`voice`
+- 初始化阶段（LLM 生成）：`signatureLine`（签名语）
+- 量子态字段：`identity`、`physicalTraits`、`personalitySelfDescription`、`preferences`、`innerWorld`、`habits`、`memories`
+- 所有量子态字段使用动态键值对（Dynamic KV），不再预设固定插槽
+- 版本迁移：v2→v3 自动迁移，从旧 profile/revealedMemory 映射到 characterCard
+
+#### Revision 机制
+- `identity`、`physicalTraits`、`innerWorld` 三个分类支持历史版本
+- 值变更时旧值压入 `_revisions` 数组（最多保留 5 条）
+- 其他分类（habits、preferences 等）直接覆盖
+
+#### 种子脚本重构（random_character_seed.py v3）
+- **移除** `age`、`profession`、`hobbies` 的随机生成（还给量子态）
+- **新增** `bodyType` 外貌字段（身材特征，对文生图至关重要）
+- **新增** Big Five ±5 随机浮动机制（同原型也有个体差异）
+- **扩充** 人格原型池至 16 种（新增：强势大女主、极客宅女、传统贤惠、疯批美人、潇洒冒险、冰山禁欲）
+
+#### 成就系统
+- 新增 `CARD_DEFINITIONS`：6 张角色卡定义（身份/外形/性格/喜好/心事/习惯）
+- 新增 `checkCardProgress(characterCard)`：检测解锁进度
+- 每类收集 3 项信息即解锁对应卡片
+- memories 特殊处理：events + milestones + gifts 总和计数
+
+#### 初始化流程简化
+- `buildInitialProfileAgentPrompt` 大幅简化：LLM 只需生成 `signatureLine` + `openingMessage` + `emotionalProfile.baseline`
+- 种子数据作为上下文传入 prompt，LLM 不再重复生成外貌/声音/性格
+- `buildInitialState(seed, llmOutput)` 从种子直接填充 characterCard
+- `buildStartPayload(seedData)` 接受种子数据参数
+
+#### 回合系统适配
+- turn 输出新增 `characterCardUpdate` 字段
+- `applyTurnResult` 自动处理 characterCard 更新
+- 旧版 `memoryUpdate` 字段自动同步到 characterCard（兼容过渡期）
+- `getCardFlatValues()` 剥离 revision 元数据，用于 prompt 上下文
+
 ## v9.3.0 (2026-05-01)
 
 ### 量子态完善
