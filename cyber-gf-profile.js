@@ -71,6 +71,19 @@ function validateInitialProfile(output) {
   if (!output || typeof output !== 'object') {
     return { ok: false, error: 'Initial profile payload is not an object' };
   }
+
+  // v3 简化格式：只需 signatureLine + openingMessage
+  if ('signatureLine' in output || 'openingMessage' in output) {
+    if (typeof output.openingMessage !== 'string') {
+      return { ok: false, error: 'openingMessage must be a string' };
+    }
+    if ('signatureLine' in output && typeof output.signatureLine !== 'string') {
+      return { ok: false, error: 'signatureLine must be a string' };
+    }
+    return { ok: true, value: output };
+  }
+
+  // v2 兼容格式：需要 profile 等字段
   const profile = output.profile;
   const dynamicStateInit = output.dynamicStateInit;
   const shortTermStateInit = output.shortTermStateInit;

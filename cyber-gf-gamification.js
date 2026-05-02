@@ -1,7 +1,69 @@
 /**
  * CyberPersona 游戏化元素模块
- * 功能：成就系统、好感度系统、每日任务、收集系统
+ * 功能：成就系统、好感度系统、每日任务、收集系统、角色卡解锁
  */
+
+/**
+ * 角色卡解锁定义（每类 3 项即解锁）
+ */
+const CARD_DEFINITIONS = {
+  identity:              { name: '身份卡', icon: '🪪', required: 3 },
+  physicalTraits:        { name: '外形卡', icon: '👤', required: 3 },
+  personalitySelfDescription: { name: '性格卡', icon: '🧠', required: 3 },
+  preferences:           { name: '喜好卡', icon: '💖', required: 3 },
+  innerWorld:            { name: '心事卡', icon: '🌙', required: 3 },
+  habits:                { name: '习惯卡', icon: '🎭', required: 3 }
+};
+
+/**
+ * 检测角色卡解锁进度
+ * @param {object} characterCard - state.characterCard
+ * @returns {{ unlocked: string[], progress: object, newCards: string[] }}
+ */
+function checkCardProgress(characterCard) {
+  if (!characterCard) return { unlocked: [], progress: {}, newCards: [] };
+
+  const previouslyUnlocked = characterCard._unlockedCards || [];
+  const progress = {};
+  const newCards = [];
+
+  for (const [category, def] of Object.entries(CARD_DEFINITIONS)) {
+    const obj = characterCard[category];
+    let count = 0;
+
+    if (Array.isArray(obj)) {
+      count = obj.length;
+    } else if (obj && typeof obj === 'object') {
+      // 对于 KV 对象，计数非 _revisions 的键
+      count = Object.keys(obj).filter(k => k !== '_revisions').length;
+    }
+
+    // memories 特殊处理：三个数组的总和
+    if (category === 'memories' && characterCard.memories) {
+      const mem = characterCard.memories;
+      count = (mem.events?.length || 0) + (mem.milestones?.length || 0) + (mem.gifts?.length || 0);
+    }
+
+    const unlocked = count >= def.required;
+    progress[category] = {
+      name: def.name,
+      icon: def.icon,
+      current: count,
+      required: def.required,
+      unlocked
+    };
+
+    if (unlocked && !previouslyUnlocked.includes(category)) {
+      newCards.push(category);
+    }
+  }
+
+  return {
+    unlocked: Object.entries(progress).filter(([, v]) => v.unlocked).map(([k]) => k),
+    progress,
+    newCards
+  };
+}
 
 /**
  * 成就系统配置
@@ -900,6 +962,8 @@ module.exports = {
   AFFECTION_SYSTEM,
   DAILY_TASKS,
   COLLECTION_SYSTEM,
+  CARD_DEFINITIONS,
+  checkCardProgress,
   AchievementManager,
   AffectionManager,
   DailyTaskManager,

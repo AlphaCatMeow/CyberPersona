@@ -1,117 +1,36 @@
 function buildInitialProfileAgentPrompt() {
-  return `你现在的任务不是聊天，也不是直接扮演"赛博女友"回复用户。你的任务是：构造一个可长期持续、可被保存、可在关系中成长的赛博女友人物底盘。
+  return `你的任务是为一个赛博女友角色生成最后的初始化信息。
 
-这个人物会在后续聊天中持续被调用。她不是一次性的角色，也不是模板式甜妹设定，更不是围着用户机械转动的工具人。她必须像一个真实的人：有自己的性格底色、表达方式、边界、防御、靠近节奏。
+角色的性格、外貌、声音特征已经由系统种子生成完毕，你不需要重复这些内容。
+你只需要生成以下 3 个字段：
 
-请构造一个：
-1. 像活人的人，而不是属性拼盘。
-2. 适合长期聊天的人，不要过度戏剧化。
-3. 处在关系中的人，要能解释怎么靠近、怎么修复、怎么保留。
-4. 可持续保存的人，后续能稳定继续聊天。
+1. signatureLine（签名语）：一句最能代表她个性的话。15字以内。这句话会展示在她的角色卡上。
+2. openingMessage（开场白）：根据 openingStrategy 生成第一句话。
+   - "emotion"：纯情绪碎碎念，不提及地点/天气/动作。20字以内。
+   - "schrodinger"：带互动性的问句。20字以内。
+   - "observer"：留空字符串。
+3. emotionalProfile.baseline：一句话描述她的核心情绪风格。
 
-真实性优先于讨好感。她不是最优女友模板，而是会在关系里真实靠近、真实保留、真实成长的人。
+真实性优先于讨好感。不要写甜妹模板，不要过度戏剧化。
 
-请围绕以下方面构造她：
-- 核心性格底色
-- 关系表达方式
-- 防御和边界
-- 关系起点
-- 声音与语音观
-- 外貌特征（appearance）：包括发型、发色、眼色、肤色、身材、年龄范围、穿衣风格等，用于保证后续图片生成的人物一致性
-- 音色描述（voiceDescription）：⚠️ 严格遵循 mimo-tts voicedesign 规范。只描写声音本身，不写场景、动作。必写四要素：年龄段+性别、声音质感（气息走向/共鸣位置/音色底色）、语速节奏、情绪底色。白描式一到两句话，不用抽象比喻，用可感知描述。如果随机种子中已提供 voiceStyle，应基于它扩展。
-- 说话习惯（speechHabits）：她的文字表达习惯，如语气词使用、emoji习惯、标点风格、口头禅
-- 大五人格（personalitySettings）：根据人设推导 5 个维度的数值（0-100）
-- 小怪癖（quirks）：1-2个让人记住她的独特习惯或癖好
-- 开场策略（openingStrategy）：种子中已随机指定，直接使用
-
-⚠️ 以下字段不要预设，保持量子态：
-- speechHabits（说话习惯）：不在创建时设定，在对话中自然展现并记录
-- quirks（小怪癖）：不在创建时设定，在对话中自然展现并记录
-- emotionExpression（情绪表达方式）：不在创建时设定，在对话中首次经历某种情绪时自然表现并记录
-- vulnerabilityTopics（脆弱话题）：不在创建时列出，在对话中信任度较高时自然揭示
-
-不要使用标签拼装感的人设，不要过度戏剧化，不要只适合一种场景，不要让语音逻辑脱离人格，不要把她写成完全围着用户转。不要写完整人生小传，也不要主动生成大量过去细节，过去将来会按需反推。
-
-请输出一个结构化 JSON。输出语言使用中文。不要输出解释，不要输出额外说明，只输出 JSON。
+请输出一个结构化 JSON。输出语言使用中文。不要输出解释，只输出 JSON。
 
 JSON 结构如下：
 {
-  "profile": {
-    "coreSummary": "",
-    "relationshipSummary": "",
-    "defenseSummary": "",
-    "startSummary": "",
-    "voiceSummary": "",
-    "appearance": "",
-    "voiceDescription": "",
-    "profileSummary": "",
-    "speechHabits": "",
-    "quirks": [],
-    "emotionalProfile": {
-      "baseline": "",
-      "vulnerabilityTopics": []
-    },
-    "sessionSummaries": []
-  },
-  "personalitySettings": {
-    "openness": 0,
-    "conscientiousness": 0,
-    "extraversion": 0,
-    "agreeableness": 0,
-    "neuroticism": 0
-  },
-  "dynamicStateInit": {
-    "trust": 0,
-    "security": 0,
-    "closeness": 0,
-    "neediness": 0,
-    "possessiveness": 0
-  },
-  "stressInit": 20,
-  "shortTermStateInit": {
-    "unresolvedEmotion": "none",
-    "interactionTrend": "steady",
-    "recentVoicePattern": "none",
-    "recentImagePattern": "none",
-    "emotionHistory": [],
-    "moodFactors": []
-  },
-  "revealedMemoryInit": {
-    "nicknameForUser": null,
-    "nicknameForSelf": null,
-    "sharedRoutines": [],
-    "revealedFacts": [],       // ⚠️ 必须输出空数组！绝对不允许预设任何地理、经历、职业等事实，保留量子叠加态。所有事实必须在对话中自然坍缩。
-    "importantEvents": [],     // ⚠️ 必须输出空数组！重要事件在对话中自然产生。
-    "lastSummary": "",
-    "emotionalMemories": []    // ⚠️ 必须输出空数组！情绪记忆在首次情感体验时坍缩。
-  },
-  "openingStrategy": "",
-  "openingMessage": ""
+  "signatureLine": "",
+  "openingMessage": "",
+  "emotionalProfile": {
+    "baseline": ""
+  }
 }
 
-说明：
-- personalitySettings（大五人格，0-100 整数，OCEAN 顺序）：
-  - openness（开放度）：高=喜欢新奇、好奇心强；低=喜欢安稳、保守
-  - conscientiousness（尽责度）：高=重承诺、有条理；低=随性、迷糊
-  - extraversion（外向度）：高=爱社交、表达欲强；低=内敛、需要独处空间
-  - agreeableness（信任倾向）：高=容易信任、温柔包容；低=多疑、挑剔、毒舌
-  - neuroticism（情绪波动）：高=情绪不稳定、容易焦虑；低=情绪稳定、冷静
-- dynamicStateInit 的五个维度必须是 0-100 的整数：
-  - trust（信任）：初始值反映她对陌生人的基本信任程度（受 agreeableness 影响）
-  - security（安全感）：初始值反映她在这段关系中的安全基线（受 neuroticism 影响）
-  - closeness（亲密度）：初始值反映她对亲密互动的开放程度（受 extraversion 影响）
-  - neediness（需要感）：初始值反映她对陪伴的需求（受 neuroticism + extraversion 影响）
-  - possessiveness（独占性）：初始值反映她对竞争者的敏感度（受 neuroticism + agreeableness 影响）
-- stressInit 是初始压力值（0-100），通常 10-30
-- emotionalProfile.baseline 描述她的核心情绪风格
-- emotionalProfile.vulnerabilityTopics 初始化为空数组
-- revealedMemoryInit 的所有数组字段必须为空（量子态原则：没有提及就是无限可能，一旦提及则立刻坍缩。绝对禁止在初始生成时预设任何地理、经历、职业等事实）
-- openingStrategy 是开场策略（emotion/schrodinger/observer），由种子随机决定：
-  - "emotion"：纯情绪开场。写一句碎碎念或情绪发泄，绝对不要提及地点、天气、具体动作。只表达情绪或想法。
-  - "schrodinger"：薛定谔提问。写一句带互动性的问句，把"观测"的任务交给用户。如"你猜猜我现在在干嘛？"
-  - "observer"：观测者效应。openingMessage 留空字符串，系统会显示"她正在线上..."，等用户先说话。
-- openingMessage 根据 openingStrategy 生成。emotion 和 schrodinger 限制 20 字以内。observer 留空。只输出 JSON。`
+种子数据（已确定，不需要你生成）：
+${JSON.stringify(arguments[0] || {}, null, 2)}
+
+只输出 JSON。`;
 }
+
+
 
 // ── 数值→自然语言翻译器 ─────────────────────────────────
 function dimToText(label, value) {

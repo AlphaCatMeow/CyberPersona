@@ -403,11 +403,11 @@ function buildTurnContextPayload(userMessage) {
   };
 }
 
-function buildStartPayload() {
+function buildStartPayload(seedData) {
   return {
-    prompt: buildInitialProfileAgentPrompt(),
+    prompt: buildInitialProfileAgentPrompt(seedData),
     envPath: ENV_PATH,
-    note: '让 agent 使用这个 prompt 生成 InitialStatePayload。生成后，agent 需要按顺序执行：1) 用 voiceDescription 调用 mimo_tts_voicedesign.py 生成音色样本（保存到 ~/.hermes/CyberPersona-hermes/.data/voice-sample.wav）；2) 将 voiceSamplePath 写入 payload；3) 调用 applyStartPayload(payload) 落盘；4) 调用 image-api skill 生成参考照片；5) 生成角色展示照片（不同于参考照片，体现人物性格）；6) 用 voice clone 生成自我介绍语音；7) 输出角色信息卡（姓名、年龄、性格、外貌、声音、关系状态、游戏化参数）；8) 发送展示照片；9) 发送介绍语音；10) 发送 openingMessage。'
+    note: '让 agent 使用这个 prompt 生成签名语和开场白。生成后，agent 需要按顺序执行：1) 用 voiceStyle 调用 mimo_tts 生成音色样本；2) 调用 image-api skill 生成参考照片；3) 调用 applyStartPayload(payload) 落盘；4) 发送初见卡（形象+名字+签名语）；5) 发送语音样本。'
   };
 }
 
