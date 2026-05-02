@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""随机角色种子生成器 v4 - 海量多样性纯净版（严格遵守量子态）
+"""随机角色种子生成器 v5 - 去 LLM 化纯净版
 
-创世阶段只生成三类字段：
+创世阶段只生成四类字段（全部由脚本决定，无需 LLM）：
 1. systemBase: Big Five + personalityArchetype（决定思维方式）
 2. appearance: 外貌锚点 — 纯视觉标签（决定图片生成）
 3. voice: 声音锚点（决定 TTS）
+4. openingMessage: 开场白（根据 openingStrategy 从预设台词库随机选取）
 
 量子态原则：只给轴不定点。
 - 不写具体数值（155cm）
@@ -142,7 +143,7 @@ voice_styles = [
 ]
 
 # ==========================================
-# 4. 开场策略
+# 4. 开场策略 + 台词库
 # ==========================================
 opening_strategies = [
     "emotion_vent",    # 上来直接宣泄情绪
@@ -152,6 +153,81 @@ opening_strategies = [
     "observer",        # 等用户先开口
 ]
 
+# 每种策略的预设台词（量子态：不提及任何具体个人信息）
+opening_lines = {
+    "emotion_vent": [
+        "好烦啊……",
+        "嘻嘻今天心情超好",
+        "困死了",
+        "有点无聊诶",
+        "突然好想吃火锅",
+        "刚被气到了",
+        "啊啊啊好开心",
+        "不想动……",
+        "今天好丧",
+        "嘿嘿",
+        "烦死了烦死了",
+        "心情突然变好了",
+        "好累哦",
+        "无聊到数天花板",
+        "气鼓鼓",
+    ],
+    "sensory_share": [
+        "刚洗完澡头发还是湿的",
+        "外面下雨了诶",
+        "咖啡好苦",
+        "风好大头发全乱了",
+        "刚吃了个超酸的橘子",
+        "阳光好刺眼",
+        "被子好暖不想起来",
+        "刚闻到桂花香",
+        "奶茶到了！",
+        "空调开太冷了",
+        "刚吃到一个巨好吃的蛋糕",
+        "楼下的猫又在叫",
+        "耳机里这首歌好好听",
+        "刚打了个喷嚏",
+        "窗外的晚霞好好看",
+    ],
+    "schrodinger": [
+        "你猜我现在在干嘛",
+        "你信不信我会读心术",
+        "你觉得我是什么类型的人",
+        "我刚才做了个决定你猜猜",
+        "你有没有闻到什么味道",
+        "猜猜我几岁",
+        "你猜我刚才笑什么",
+        "我有个秘密你想知道吗",
+        "你觉不觉得少了点什么",
+        "猜猜我在听什么歌",
+        "你猜我今天干了件什么事",
+        "我说句话你别生气啊",
+        "你猜我现在什么表情",
+        "我打赌你猜不到",
+        "你觉得我像哪种动物",
+    ],
+    "accidental": [
+        "啊 发错了",
+        "这个不是给你的！",
+        "假装你没看到",
+        "手滑了",
+        "你就当没看见",
+        "撤回撤回！",
+        "完了发错人了",
+        "你什么都没看到",
+        "这条消息自动销毁",
+        "当我没说",
+        "啊啊啊发错了",
+        "算了发都发了",
+        "你看到的都是幻觉",
+        "这条是系统自动发的",
+        "不是我发的",
+    ],
+    "observer": [
+        "",  # 留空，等用户先开口
+    ],
+}
+
 
 def _perturb(val, delta=6):
     return max(0, min(100, val + random.randint(-delta, delta)))
@@ -159,6 +235,8 @@ def _perturb(val, delta=6):
 
 def generate_seed():
     archetype = random.choice(big_five_archetypes)
+    strategy = random.choice(opening_strategies)
+    message = random.choice(opening_lines[strategy])
 
     seed = {
         "systemBase": {
@@ -170,7 +248,7 @@ def generate_seed():
                 "c": _perturb(archetype["c"]),
                 "e": _perturb(archetype["e"]),
             },
-            "openingStrategy": random.choice(opening_strategies),
+            "openingStrategy": strategy,
         },
         "appearance": {
             "hair": random.choice(hair_styles),
@@ -182,6 +260,7 @@ def generate_seed():
         "voice": {
             "voiceStyle": random.choice(voice_styles),
         },
+        "openingMessage": message,
         "seedId": random.randint(10000, 99999),
     }
     return seed

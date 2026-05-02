@@ -72,16 +72,11 @@ function validateInitialProfile(output) {
     return { ok: false, error: 'Initial profile payload is not an object' };
   }
 
-  // v3 简化格式：只需 signatureLine + openingMessage
-  if ('signatureLine' in output || 'openingMessage' in output) {
-    if (typeof output.openingMessage !== 'string') {
-      return { ok: false, error: 'openingMessage must be a string' };
-    }
-    if ('signatureLine' in output && typeof output.signatureLine !== 'string') {
-      return { ok: false, error: 'signatureLine must be a string' };
-    }
-    return { ok: true, value: output };
+  // v5: openingMessage 由种子脚本生成，不再需要 LLM 验证
+  if ('openingMessage' in output && typeof output.openingMessage !== 'string') {
+    return { ok: false, error: 'openingMessage must be a string' };
   }
+  return { ok: true, value: output };
 
   // v2 兼容格式：需要 profile 等字段
   const profile = output.profile;
@@ -120,12 +115,7 @@ function validateInitialProfile(output) {
     }
   }
 
-  // emotionalProfile is optional, but if present must have a baseline string
-  if (output.emotionalProfile !== undefined) {
-    if (!output.emotionalProfile || typeof output.emotionalProfile.baseline !== 'string' || !output.emotionalProfile.baseline.trim()) {
-      return { ok: false, error: 'emotionalProfile.baseline must be a non-empty string when emotionalProfile is provided' };
-    }
-  }
+  // v5: emotionalProfile 已删除（违背量子态原则，与 Big Five 重复）
 
   if (typeof openingMessage !== 'string' || !openingMessage.trim()) {
     return { ok: false, error: 'openingMessage is required' };
@@ -252,18 +242,16 @@ function resolveInitialProfilePayload(output, options = {}) {
 }
 
 /**
- * 构建初始状态（v3 角色卡版本）
- * @param {object} seed - 脚本生成的种子数据（systemBase + appearance + voice + openingStrategy）
- * @param {object} llmOutput - LLM 生成的补充数据（signatureLine + openingMessage + emotionalProfile）
+ * 构建初始状态（v5 去 LLM 化版本）
+ * @param {object} seed - 脚本生成的种子数据（systemBase + appearance + voice + openingMessage）
  */
-function buildInitialState(seed, llmOutput) {
+function buildInitialState(seed) {
   const base = createEmptyState();
-  const output = llmOutput || {};
 
-  // 从 seed 填充 characterCard（兼容新旧格式）
+  // 从 seed 填充 characterCard
   const characterCard = { ...base.characterCard };
   if (seed) {
-    const sysBase = seed.systemBase || seed; // v4 嵌套 or v3 扁平
+    const sysBase = seed.systemBase || seed;
     characterCard.systemBase = {
       bigFive: sysBase.bigFive || seed.bigFive || base.characterCard.systemBase.bigFive,
       personalityArchetype: sysBase.personalityArchetype || seed.personalityArchetype || '',
@@ -278,16 +266,6 @@ function buildInitialState(seed, llmOutput) {
     };
   }
 
-  // LLM 生成的签名语
-  if (output.signatureLine) {
-    characterCard.signatureLine = String(output.signatureLine).trim();
-  }
-
-  // LLM 生成的证件照路径
-  if (output.referencePhotoPath) {
-    characterCard.referencePhotoPath = String(output.referencePhotoPath).trim();
-  }
-
   // 从 bigFive 映射 personalitySettings
   const bigFive = characterCard.systemBase.bigFive;
   const personalitySettings = {
@@ -299,7 +277,7 @@ function buildInitialState(seed, llmOutput) {
   };
 
   // 计算初始关系值
-  const dynamicStateInit = output.dynamicStateInit || computeInitialDynamicState(personalitySettings);
+  const dynamicStateInit = computeInitialDynamicState(personalitySettings);
 
   const state = {
     ...base,
@@ -314,34 +292,20 @@ function buildInitialState(seed, llmOutput) {
     },
     characterCard,
     personalitySettings,
-    // 保留旧版 profile 结构（兼容过渡期）
     profile: {
       ...base.profile,
-      ...(output.profile || {}),
       appearance: characterCard.appearance ? JSON.stringify(characterCard.appearance) : '',
-      referencePhotoPath: characterCard.referencePhotoPath,
-      coreSummary: output.profile?.coreSummary || characterCard.systemBase.personalityArchetype
+      coreSummary: characterCard.systemBase.personalityArchetype
     },
     dynamicState: {
       ...base.dynamicState,
       ...dynamicStateInit
     },
-    stress: output.stressInit ?? FALLBACK_STRESS,
-    shortTermState: {
-      ...base.shortTermState,
-      ...(output.shortTermStateInit || {})
-    },
-    revealedMemory: {
-      ...base.revealedMemory,
-      ...(output.revealedMemoryInit || {})
-    },
+    stress: FALLBACK_STRESS,
+    shortTermState: { ...base.shortTermState },
+    revealedMemory: { ...base.revealedMemory },
     sessionSummaries: []
   };
-
-  // Include emotionalProfile if the LLM provided one
-  if (output.emotionalProfile) {
-    state.profile.emotionalProfile = output.emotionalProfile;
-  }
 
   return state;
 }

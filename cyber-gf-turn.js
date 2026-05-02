@@ -117,8 +117,6 @@ function validateTurnOutput(output) {
   for (const type of ['events', 'milestones', 'gifts']) {
     if (!Array.isArray(ccUpdate.memories[type])) ccUpdate.memories[type] = [];
   }
-  if (ccUpdate.signatureLine === undefined) ccUpdate.signatureLine = null;
-
   return { ok: true, value: output };
 }
 
@@ -183,8 +181,7 @@ function createFallbackTurnOutput(userMessage) {
       preferences: {},
       innerWorld: {},
       habits: {},
-      memories: { events: [], milestones: [], gifts: [] },
-      signatureLine: null
+      memories: { events: [], milestones: [], gifts: [] }
     }
   };
 }

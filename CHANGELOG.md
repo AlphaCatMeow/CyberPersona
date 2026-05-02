@@ -1,5 +1,27 @@
 # Changelog
 
+## v10.1.0 (2026-05-02)
+
+### 初始化流程去 LLM 化
+
+#### 种子脚本 v5（random_character_seed.py）
+- 新增开场白台词库：5 种策略 × 15 条预设台词（共 75 条）
+- 种子脚本直接输出 `openingMessage`，无需 LLM 生成
+- 量子态原则：台词不提及任何具体个人信息
+
+#### 删除的字段和函数
+- 删除 `signatureLine`（签名语）— 不值得一次 LLM 调用
+- 删除 `emotionalProfile` — 违背量子态原则，与 Big Five 重复
+- 删除 `buildInitialProfileAgentPrompt()` — 不再需要 LLM 初始化调用
+- `buildInitialState(seed)` 不再需要 `llmOutput` 参数
+
+#### 效果
+- 初始化时间从 ~7s 降到 ~4s（省掉一次 LLM API 调用）
+- 初始化流程：种子脚本 → 并行生成证件照+语音样本 → 发送
+- 零 LLM 开销完成角色创建
+
+---
+
 ## v10.0.0 (2026-05-02)
 
 ### 角色卡系统 — 数据结构与初始化生命周期

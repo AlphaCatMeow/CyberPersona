@@ -1,39 +1,3 @@
-function buildInitialProfileAgentPrompt() {
-  return `你的任务是为一个赛博女友角色生成最后的初始化信息。
-
-角色的性格、外貌、声音特征已经由系统种子生成完毕，你不需要重复这些内容。
-你只需要生成以下 3 个字段：
-
-1. signatureLine（签名语）：一句最能代表她个性的话。15字以内。这句话会展示在她的角色卡上。
-2. openingMessage（开场白）：根据 openingStrategy 生成第一句话。
-   - "emotion_vent"：纯情绪碎碎念（开心/生气/郁闷），不提原因，不提及地点/天气/动作。20字以内。
-   - "sensory_share"：分享一个当下的感官体验（闻到什么、听到什么、看到什么）。20字以内。
-   - "schrodinger"：带互动性的问句，让用户猜。20字以内。
-   - "accidental"：假装发错了或手滑的消息。20字以内。
-   - "observer"：留空字符串。
-3. emotionalProfile.baseline：一句话描述她的核心情绪风格。
-
-真实性优先于讨好感。不要写甜妹模板，不要过度戏剧化。
-
-请输出一个结构化 JSON。输出语言使用中文。不要输出解释，只输出 JSON。
-
-JSON 结构如下：
-{
-  "signatureLine": "",
-  "openingMessage": "",
-  "emotionalProfile": {
-    "baseline": ""
-  }
-}
-
-种子数据（已确定，不需要你生成）：
-${JSON.stringify(arguments[0] || {}, null, 2)}
-
-只输出 JSON。`;
-}
-
-
-
 // ── 数值→自然语言翻译器 ─────────────────────────────────
 function dimToText(label, value) {
   const ranges = {
@@ -157,7 +121,7 @@ function buildTurnAgentPrompt(turnContextPayload) {
 ${stateNarrative}
 
 【上下文字段】
-emotionHistory=最近情绪记录, moodFactors=氛围因子(含timeOfDay当前时间), emotionalMemories=长期情绪记忆, emotionalProfile=情绪基线+脆弱话题(信任低时不提), sessionSummaries=历史session摘要, revealedFacts=已说过的事实(保持一致)
+emotionHistory=最近情绪记录, moodFactors=氛围因子(含timeOfDay当前时间), emotionalMemories=长期情绪记忆, sessionSummaries=历史session摘要, revealedFacts=已说过的事实(保持一致)
 speechHabits=说话习惯(量子态:空则自然展现并记录,有则保持一致), quirks=小怪癖(量子态:空则自然展现并记录,有则保持一致)
 characterCard=角色信息模板。已揭露的字段有值，未揭露的为空。在对话中自然提到个人信息时，通过characterCardUpdate写入对应分类。
 
@@ -221,7 +185,7 @@ vulnerabilityTopics 初始为空。当信任度较高且对话自然触及敏感
   "stressDelta":"neutral",
   "shortTermUpdate":{"unresolvedEmotion":"","interactionTrend":"","recentVoicePattern":"","recentImagePattern":""},
   "memoryUpdate":{"nicknameForUser":null,"nicknameForSelf":null,"sharedRoutinesAdd":[],"revealedFactsAdd":[],"importantEventsAdd":[],"lastSummary":"","emotionalMemoriesAdd":[],"locationUpdate":null,"emotionalExpressionAdd":null,"vulnerabilityTopicsAdd":null},
-  "characterCardUpdate":{"identity":{},"physicalTraits":{},"personalitySelfDescription":{},"preferences":{},"innerWorld":{},"habits":{},"memories":{"events":[],"milestones":[],"gifts":[]},"signatureLine":null}
+  "characterCardUpdate":{"identity":{},"physicalTraits":{},"personalitySelfDescription":{},"preferences":{},"innerWorld":{},"habits":{},"memories":{"events":[],"milestones":[],"gifts":[]}}
 }
 
 当前状态：
@@ -284,7 +248,6 @@ ${JSON.stringify(turnContextPayload, null, 2)}`;
 }
 
 module.exports = {
-  buildInitialProfileAgentPrompt,
   buildTurnAgentPrompt,
   buildDebugTurnAgentPrompt,
   buildStateNarrative,

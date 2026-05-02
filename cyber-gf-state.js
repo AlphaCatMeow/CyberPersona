@@ -50,8 +50,6 @@ function createEmptyState() {
       voice: {
         voiceStyle: ''
       },
-      // ★ 初始化阶段：LLM 生成一次，后续不可变
-      signatureLine: '',
       referencePhotoPath: '',
       // ★ 量子态字段：初始为空，对话中逐步揭露
       identity: {},           // 动态 KV：age, birthday, zodiac, bloodType, profession...
@@ -86,10 +84,6 @@ function createEmptyState() {
       referencePhotoPath: '',
       speechHabits: '',
       quirks: [],
-      emotionalProfile: {
-        baseline: '',
-        vulnerabilityTopics: []
-      },
       sessionSummaries: []
     },
     dynamicState: {
@@ -188,7 +182,6 @@ function _repairCharacterCard(base, state) {
     },
     appearance: { ...base.appearance, ...(cc.appearance || {}) },
     voice: { ...base.voice, ...(cc.voice || {}) },
-    signatureLine: typeof cc.signatureLine === 'string' ? cc.signatureLine : '',
     referencePhotoPath: typeof cc.referencePhotoPath === 'string' ? cc.referencePhotoPath : '',
     identity: _repairQuantumKV(cc.identity),
     physicalTraits: _repairQuantumKV(cc.physicalTraits),
@@ -289,7 +282,6 @@ function repairState(state) {
           hair: '', skin: '', eye: '', clothing: '', bodyType: ''
         },
         voice: { voiceStyle: '' },
-        signatureLine: '',
         referencePhotoPath: state.profile?.referencePhotoPath || '',
         identity: {},
         physicalTraits: {},
@@ -312,10 +304,7 @@ function repairState(state) {
     profile: {
       ...base.profile,
       ...(state?.profile || {}),
-      emotionalProfile: {
-        ...base.profile.emotionalProfile,
-        ...(state?.profile?.emotionalProfile || {})
-      },
+      // emotionalProfile 已删除（v5：违背量子态原则）
       sessionSummaries: Array.isArray(state?.profile?.sessionSummaries) ? state.profile.sessionSummaries : []
     },
     personalitySettings: { ...base.personalitySettings, ...(state?.personalitySettings || {}) },
@@ -947,10 +936,6 @@ function applyTurnResult(state, turnOutput) {
           }
         }
       }
-    }
-    // 处理签名语（仅首次）
-    if (ccUpdate.signatureLine && !next.characterCard.signatureLine) {
-      next.characterCard.signatureLine = String(ccUpdate.signatureLine).trim();
     }
   }
 

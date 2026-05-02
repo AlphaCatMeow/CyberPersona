@@ -18,7 +18,7 @@ const {
 const { buildInitialState, validateInitialProfile } = require('./cyber-gf-profile');
 const { validateTurnOutput, createFallbackTurnOutput } = require('./cyber-gf-turn');
 
-const { buildInitialProfileAgentPrompt, buildTurnAgentPrompt, buildDebugTurnAgentPrompt } = require('./cyber-gf-prompts');
+const { buildTurnAgentPrompt, buildDebugTurnAgentPrompt } = require('./cyber-gf-prompts');
 const { createGamificationSystem } = require('./cyber-gf-gamification');
 function getDefaultTelegramTarget() {
   const cfg = getConfig();
@@ -404,7 +404,6 @@ function buildTurnContextPayload(userMessage) {
     speechHabits: p.speechHabits,
     personalitySettings: state.personalitySettings || {},
     quirks: p.quirks,
-    emotionalProfile: p.emotionalProfile || {},
     sessionSummaries: (p.sessionSummaries || []).slice(-3)
   };
   return {
@@ -420,10 +419,10 @@ function buildTurnContextPayload(userMessage) {
 }
 
 function buildStartPayload(seedData) {
+  // v5: 种子脚本已包含所有数据（含 openingMessage），无需 LLM
   return {
-    prompt: buildInitialProfileAgentPrompt(seedData),
-    envPath: ENV_PATH,
-    note: '让 agent 使用这个 prompt 生成签名语和开场白。生成后，agent 需要按顺序执行：1) 用 voiceStyle 调用 mimo_tts 生成音色样本；2) 调用 image-api skill 生成参考照片；3) 调用 applyStartPayload(payload) 落盘；4) 发送初见卡（形象+名字+签名语）；5) 发送语音样本。'
+    seed: seedData,
+    note: '种子数据已完整，无需 LLM。agent 需要按顺序执行：1) 用 voiceStyle 调用 mimo_tts 生成音色样本；2) 调用 image-api skill 生成参考照片；3) 调用 applyStartPayload(payload) 落盘；4) 发送参考照 + 开场白 + 语音样本。'
   };
 }
 
@@ -571,30 +570,16 @@ function buildDebugTurnPayload(debugCommand) {
 
 function applyInitialStatePayload(initialPayload) {
   const start = Date.now();
-  const validated = validateInitialProfile(initialPayload);
-  if (!validated.ok) {
-    throw new Error(validated.error);
-  }
+  const seed = initialPayload.seed || initialPayload;
 
-  // 量子态双重保险：即使 validator 漏过，代码层也强制清空记忆
-  const rmi = validated.value.revealedMemoryInit;
-  if (rmi) {
-    rmi.revealedFacts = [];
-    rmi.emotionalMemories = [];
-    rmi.importantEvents = [];
-  }
-
-  // v10: seed 和 llmOutput 分离
-  const seed = validated.value.seed || null;
-  const llmOutput = validated.value;
-  let state = buildInitialState(seed, llmOutput);
+  let state = buildInitialState(seed);
   state = saveState(state);
   const elapsed = Date.now() - start;
   const timestamp = new Date().toISOString();
   console.error(`[perf] applyInitialStatePayload: ${timestamp} (${elapsed}ms)`);
   return {
     state,
-    openingMessage: validated.value.openingMessage,
+    openingMessage: seed.openingMessage || '',
     _perfTimestamp: timestamp
   };
 }
